@@ -5,6 +5,7 @@ import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import pg from 'pg';
 import { startTestServer, freshTestDb, testDatabaseUrl } from './helpers.ts';
 import { tx, backoffMs } from '../src/db.ts';
 
@@ -163,6 +164,19 @@ describe('tx()', () => {
       tx(t.db, async () => (await setName('kept'), Promise.reject(new HttpError(409, 'x'))), { commitOn: (e) => e instanceof HttpError }),
     );
     assert.equal(await name(), 'kept');
+  });
+
+  test('a dropped idle connection does not stop the server, and the next query works', async () => {
+    const pid = (await t.db.one<{ pid: number }>('SELECT pg_backend_pid() AS pid'))!.pid; // now idle in the pool
+    const admin = new pg.Client({ connectionString: testDatabaseUrl() });
+    await admin.connect();
+    try {
+      await admin.query('SELECT pg_terminate_backend($1)', [pid]);
+    } finally {
+      await admin.end();
+    }
+    await new Promise((r) => setTimeout(r, 100)); // let the pool see the drop
+    assert.equal((await t.db.one('SELECT 1 AS ok'))!.ok, 1);
   });
 
   test('retries back off exponentially with jitter, capped', () => {

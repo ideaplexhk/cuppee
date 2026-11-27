@@ -41,6 +41,9 @@ export class DB {
 
   constructor(config: pg.PoolConfig) {
     this.pool = new pg.Pool({ ...config, types });
+    // An idle connection that Postgres drops (restart, failover, idle timeout) is reported here. Without a listener
+    // Node would treat it as an unhandled 'error' event and stop the whole API; the pool replaces the connection.
+    this.pool.on('error', (e) => console.error('[db] idle connection lost:', e.message));
   }
 
   /** Runs one statement on the current transaction's connection, or on the pool outside a transaction. */
