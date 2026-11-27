@@ -42,7 +42,7 @@ step "app: install"
 install_if_needed app
 step "app: typecheck"
 (cd app && npm run typecheck); ran+=("app typecheck")
-if (cd app && npm run | grep -q " test$"); then
+if [[ "$(cd app && npm pkg get scripts.test)" != "{}" ]]; then
   step "app: tests"
   (cd app && npm test); ran+=("app tests")
 else
