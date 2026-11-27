@@ -11,6 +11,7 @@ import { listCafes, listRewards, memberSummary, recordVisit, redeemReward, redee
 import { authStand, confirmEvent, dismissEvent, ingestEvents, staffFeed } from './services/stand.ts';
 import { counterMember, handleWebhook } from './pos/index.ts';
 import { tx } from './db.ts';
+import { memberForStaff, memberPreferencesJson, setMemberDisplayName, setMemberPreferencesJson, staffList } from './data/identity.ts';
 
 type Ctx = {
   req: IncomingMessage;
@@ -62,12 +63,12 @@ export function buildRoutes(db: DB, cfg: Config, sms: SmsSender): Route[] {
       const { memberId } = member(c);
       const name = typeof c.body?.displayName === 'string' ? c.body.displayName.trim().slice(0, 40) : undefined;
       const prefs = c.body?.preferences && typeof c.body.preferences === 'object' ? c.body.preferences : undefined;
-      if (name !== undefined) db.prepare('UPDATE members SET display_name = ? WHERE id = ?').run(name || null, memberId);
+      if (name !== undefined) setMemberDisplayName(db, memberId, name || null);
       if (prefs) {
-        const cur = JSON.parse((db.prepare('SELECT preferences FROM members WHERE id = ?').get(memberId) as { preferences: string }).preferences);
+        const cur = JSON.parse(memberPreferencesJson(db, memberId));
         const allowed = ['drink', 'milk', 'sweetness', 'temperature', 'notes'];
         for (const k of allowed) if (k in prefs) cur[k] = String(prefs[k]).slice(0, 80);
-        db.prepare('UPDATE members SET preferences = ? WHERE id = ?').run(JSON.stringify(cur), memberId);
+        setMemberPreferencesJson(db, memberId, JSON.stringify(cur));
       }
       return memberSummary(db, memberId);
     }),
@@ -85,9 +86,7 @@ export function buildRoutes(db: DB, cfg: Config, sms: SmsSender): Route[] {
     route('GET', '/v1/rewards', () => listRewards(db)),
 
     // ---- staff (café tablet)
-    route('GET', '/v1/staff/cafes/:cafeId/staff', (c) =>
-      db.prepare('SELECT id, name FROM staff WHERE cafe_id = ? ORDER BY name').all(c.params.cafeId),
-    ),
+    route('GET', '/v1/staff/cafes/:cafeId/staff', (c) => staffList(db, c.params.cafeId)),
     route('POST', '/v1/staff/login', (c) => staffLogin(db, c.body?.cafeId, c.body?.staffId, c.body?.pin)),
     route('GET', '/v1/staff/feed', (c) => {
       const s = staff(c);
@@ -100,7 +99,7 @@ export function buildRoutes(db: DB, cfg: Config, sms: SmsSender): Route[] {
       const s = staff(c);
       const memberId = verifyCardCode(cfg.cardSecret, c.body?.code);
       if (!memberId) throw new HttpError(400, 'card_expired', 'Card code expired. Ask the member to refresh.');
-      const m = db.prepare('SELECT id, display_name AS name, preferences FROM members WHERE id = ?').get(memberId) as any;
+      const m = memberForStaff(db, memberId);
       const cafe = getCafe(db, s.cafeId);
       const st = stamps(db, memberId, s.cafeId);
       return { member: { ...m, preferences: JSON.parse(m.preferences) }, stamps: st, stampGoal: cafe.stamp_goal, stampCardReady: st >= cafe.stamp_goal, beans: beans(db, memberId) };
