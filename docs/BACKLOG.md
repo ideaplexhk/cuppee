@@ -17,7 +17,7 @@ Status: `todo` · `doing` · `blocked` · `review` (PR open) · `done`. The owne
 | --- | --- | --- | --- | --- |
 | M1.1 | Data-access layer | All SQL goes through one module per area; services no longer import `node:sqlite` directly; tests unchanged and green | | review |
 | M1.2 | Postgres schema and migrations | Plain SQL migration files with a tiny runner; schema matches today's tables; `cafe_id` on every café-owned row | | review |
-| M1.3 | Port services and tests to Postgres | Server runs on `pg`; tests run against a real Postgres (CI service, local Docker or embedded); SQLite removed | M1.1, M1.2 | todo |
+| M1.3 | Port services and tests to Postgres | Server runs on `pg`; tests run against a real Postgres (CI service, local Docker or embedded); SQLite removed | M1.1, M1.2 | doing |
 | M1.4 | Multi-café isolation tests | Tests prove staff of café A cannot read or change café B's data | M1.3 | todo |
 
 ## M2. Two languages
