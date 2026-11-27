@@ -25,9 +25,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      # Screenshots (scripts/verify.sh --screens + Playwright) are switched on by backlog task M0.3.
-      - name: Verify (type checks and tests)
-        run: bash scripts/verify.sh
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Playwright (screenshots)
+        run: |
+          pip install playwright==1.63.0
+          python -m playwright install --with-deps chromium
+      - name: Verify (type checks, tests and screenshots)
+        run: bash scripts/verify.sh --screens
       - uses: actions/upload-artifact@v4
         if: always()
         with:

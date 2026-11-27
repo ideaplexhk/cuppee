@@ -66,6 +66,16 @@ and unblocks the task.
 - **Recommendation:** Use the bridge for the pilot; test one Bluetooth reader in parallel.
 - **Answer:**
 
+### Q10. Agent self-merges
+- **Needed for:** every overnight run (the scheduled task tells the agent to merge its own passing PRs)
+- **Question:** The scheduled overnight task says the agent may merge its own PRs when CI is green, a reviewer PASS
+  names the head commit, there are no conflicts and no open owner comments. `CLAUDE.md` on main still says "never
+  merge your own PR"; the change is in PR #2. On 2026-11-28 05:17 HK the agent merged PR #3 (M0.2) under the
+  scheduled task's rule. Do you confirm this practice?
+- **Options:** (a) confirm: merge PR #2 so CLAUDE.md matches; (b) reject: the agent only opens PRs and you merge.
+- **Recommendation:** (a), keeping the exclusions in the scheduled task (no merges of rule, gate or decision files).
+- **Answer:**
+
 ## Answered
 
 Answers move into `DIRECTION.md` → Decision log.

@@ -1,7 +1,9 @@
 [
-  { "name": "sign-in", "path": "/sign-in" },
-  { "name": "member-card", "path": "/card" },
-  { "name": "rewards", "path": "/rewards" },
-  { "name": "staff-login", "path": "/staff/login" },
-  { "name": "staff-home", "path": "/staff" }
+  { "name": "sign-in", "path": "/sign-in", "auth": "none" },
+  { "name": "member-card", "path": "/card", "auth": "member" },
+  { "name": "rewards", "path": "/rewards", "auth": "member" },
+  { "name": "map", "path": "/map", "auth": "member" },
+  { "name": "profile", "path": "/profile", "auth": "member" },
+  { "name": "staff-login", "path": "/staff/login", "auth": "none" },
+  { "name": "staff-home", "path": "/staff", "auth": "staff" }
 ]

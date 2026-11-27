@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { api, ApiError, type FeedEvent, type Reward, type VisitResult } from '../../src/api';
 import { useSession } from '../../src/session';
 import { QrScanner } from '../../src/components/QrScanner';
-import { Button, Card, ErrorText, StampRow } from '../../src/components/ui';
+import { Button, Card, ErrorText, Loading, StampRow } from '../../src/components/ui';
 import { colors, space, type } from '../../src/theme';
 
 type Feed = { cafe: { id: string; name: string }; events: FeedEvent[]; serverTime: number };
@@ -30,7 +30,7 @@ function ago(t: number, now: number) {
 }
 
 export default function StaffHome() {
-  const { staffToken, staff, setStaff } = useSession();
+  const { ready, staffToken, staff, setStaff } = useSession();
   const [feed, setFeed] = useState<Feed | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -74,13 +74,15 @@ export default function StaffHome() {
     return () => clearTimeout(t);
   }, [toast]);
 
+  // Wait for the stored session to load, or a tablet opened straight on /staff bounces to the login screen.
+  if (!ready) return <Loading />;
   if (!staffToken) return <Redirect href="/staff/login" />;
 
   function visitToast(name: string | null, v: VisitResult) {
     const who = name ?? 'Member';
     if (v.cooldown) return setToast(`${who}: visit noted (already stamped in the last few minutes)`);
-    const ready = v.balances.stampCardReady ? ' · stamp card complete!' : '';
-    setToast(`${who}: +1 stamp (${v.balances.stamps}/${v.balances.stampGoal}), +${v.awarded.beans} beans${ready}`);
+    const doneNote = v.balances.stampCardReady ? ' · stamp card complete!' : '';
+    setToast(`${who}: +1 stamp (${v.balances.stamps}/${v.balances.stampGoal}), +${v.awarded.beans} beans${doneNote}`);
   }
 
   async function confirm(e: FeedEvent) {
