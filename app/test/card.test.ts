@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import { createHash, createHmac } from 'node:crypto';
 import { base64url, hmacSha256, sha256, utf8 } from '../src/lib/hmac';
 import { cardCode, msUntilNext } from '../src/lib/card';
+// Intentional coupling: this imports the server's own card code so the two can never drift apart.
+// If server/src/services/card.ts moves (e.g. in the Postgres refactor), update this import.
 import { CARD_WINDOW_MS, cardCode as serverCardCode, cardKeyFor } from '../../server/src/services/card.ts';
 
 const hex = (b: Uint8Array) => Buffer.from(b).toString('hex');
