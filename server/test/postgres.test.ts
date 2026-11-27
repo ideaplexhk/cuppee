@@ -6,8 +6,9 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { startTestServer, freshTestDb, testDatabaseUrl } from './helpers.ts';
-import { tx } from '../src/db.ts';
-import { HttpError } from '../src/lib/util.ts';
+import { tx, backoffMs } from '../src/db.ts';
+
+import { HttpError, hashPin, sha256 } from '../src/lib/util.ts';
 
 describe('on PostgreSQL', () => {
   let s: Awaited<ReturnType<typeof startTestServer>>;
@@ -94,6 +95,33 @@ describe('on PostgreSQL', () => {
     await s.db.run('UPDATE cups SET member_id = NULL, sun_counter = -1 WHERE id = $1', ['cup_424']);
   });
 
+  test('busy network: 20 cafés reading and confirming cups at the same moment all succeed', async () => {
+    const N = 20;
+    const cafes: { uid: string; staff: string; headers: Record<string, string> }[] = [];
+    for (let i = 0; i < N; i++) {
+      const c = `cafe_busy${i}`;
+      await s.db.run('INSERT INTO cafes (id, name) VALUES ($1, $1)', [c]);
+      await s.db.run("INSERT INTO staff (id, cafe_id, name, pin_hash) VALUES ($1, $2, 'B', $3)", [`stf_busy${i}`, c, hashPin('1234')]);
+      await s.db.run('INSERT INTO stands (id, cafe_id, key_hash) VALUES ($1, $2, $3)', [`std_busy${i}`, c, sha256(`k${i}`)]);
+      const m = await s.signUp(`9666${String(i).padStart(4, '0')}`, `M${i}`);
+      const uid = `04BB${String(i).padStart(10, '0')}`;
+      await s.db.run("INSERT INTO cups (id, uid, tag_type, created_at, member_id) VALUES ($1, $2, 'ntag213', 0, $3)", [`cup_busy${i}`, uid, m.memberId]);
+      cafes.push({ uid, staff: await s.staffToken(c, `stf_busy${i}`), headers: { 'x-stand-id': `std_busy${i}`, 'x-stand-key': `k${i}` } });
+    }
+    for (let round = 0; round < 3; round++) {
+      const feeds = cafes.map((x) => s.call('GET', '/v1/staff/feed', { token: x.staff }));
+      const reads = await Promise.all(
+        cafes.map((x, i) => s.call('POST', '/v1/stand/events', { headers: x.headers, body: { events: [{ eventId: `busy-${round}-${i}`, readAt: Date.now(), uid: x.uid }] } })),
+      );
+      assert.deepEqual(reads.map((r) => r.status), Array(N).fill(200), JSON.stringify(reads.filter((r) => r.status !== 200).map((r) => r.data)));
+      const confirms = await Promise.all(
+        reads.map((r, i) => s.call('POST', `/v1/staff/events/${r.data.results[0].id}/confirm`, { token: cafes[i].staff })),
+      );
+      assert.deepEqual(confirms.map((r) => r.status), Array(N).fill(200), JSON.stringify(confirms.filter((r) => r.status !== 200).map((r) => r.data)));
+      assert.ok((await Promise.all(feeds)).every((f) => f.status === 200), 'feed polls alongside all succeed');
+    }
+  });
+
   test('times, counts and money come back as numbers, as they did on SQLite', async () => {
     const m = await memberWithVisits('95550008', 1);
     const me = await s.call('GET', '/v1/me', { token: m.token });
@@ -135,6 +163,21 @@ describe('tx()', () => {
       tx(t.db, async () => (await setName('kept'), Promise.reject(new HttpError(409, 'x'))), { commitOn: (e) => e instanceof HttpError }),
     );
     assert.equal(await name(), 'kept');
+  });
+
+  test('retries back off exponentially with jitter, capped', () => {
+    assert.equal(backoffMs(1, () => 1), 10);
+    assert.equal(backoffMs(4, () => 1), 80);
+    assert.equal(backoffMs(20, () => 1), 500);
+    assert.equal(backoffMs(20, () => 0), 0);
+  });
+
+  test('after-commit work queued by a nested tx() that is undone never runs', async () => {
+    let sent = 0;
+    await tx(t.db, async () => {
+      await assert.rejects(tx(t.db, async () => (t.db.afterCommit(() => sent++), Promise.reject(new Error('undo')))));
+    });
+    assert.equal(sent, 0);
   });
 
   test('a nested tx() that fails undoes only its own writes', async () => {

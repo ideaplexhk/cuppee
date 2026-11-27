@@ -109,6 +109,7 @@ export class DB {
   /** A tx() inside another one: undo just its own writes if it fails, like a nested SQLite transaction would. */
   private async savepoint<T>(t: Tx, fn: () => Promise<T>): Promise<T> {
     const name = `sp_${++t.savepoints}`;
+    const hooksBefore = t.afterCommit.length;
     await t.client.query(`SAVEPOINT ${name}`);
     try {
       const r = await fn();
@@ -117,6 +118,8 @@ export class DB {
     } catch (e) {
       // After a serialization failure the whole transaction is lost anyway; the outer tx() retries it.
       if (!isRetryable(e)) await t.client.query(`ROLLBACK TO SAVEPOINT ${name}`);
+      // Work queued for after commit by the undone part (such as an SMS) is dropped with it.
+      t.afterCommit.length = hooksBefore;
       throw e;
     }
   }
@@ -127,7 +130,16 @@ export function openDb(connectionString: string, extra: pg.PoolConfig = {}): DB 
 }
 
 const RETRYABLE = new Set(['40001', '40P01']); // serialization_failure, deadlock_detected
-const MAX_ATTEMPTS = 5;
+// Postgres also reports false conflicts between unrelated requests (its predicate locks are coarse on small
+// tables), so a conflict is retried with exponential backoff and full jitter: 10 tries over about 2.5 s at most.
+const MAX_ATTEMPTS = 10;
+const BACKOFF_BASE_MS = 5;
+const BACKOFF_CAP_MS = 500;
+
+/** How long to wait before try number `attempt + 1`. */
+export function backoffMs(attempt: number, random = Math.random) {
+  return random() * Math.min(BACKOFF_CAP_MS, BACKOFF_BASE_MS * 2 ** attempt);
+}
 
 function isRetryable(e: unknown) {
   return RETRYABLE.has((e as { code?: string })?.code ?? '');
@@ -143,7 +155,7 @@ export async function tx<T>(db: DB, fn: () => Promise<T>, opts: TxOptions = {}):
       return await db._transaction(fn, opts);
     } catch (e) {
       if (attempt >= MAX_ATTEMPTS || !isRetryable(e) || db.inTransaction) throw e;
-      await new Promise((r) => setTimeout(r, Math.random() * 10 * attempt));
+      await new Promise((r) => setTimeout(r, backoffMs(attempt)));
     }
   }
 }

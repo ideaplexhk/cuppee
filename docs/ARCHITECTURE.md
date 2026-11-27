@@ -37,7 +37,8 @@ test compares against it), with money as `NUMERIC(10,2)` and an `id` on `otp_cod
 apply pending migrations when they start.
 
 Transactions (M1.3): `server/src/db.ts` wraps a `pg` pool. Every HTTP request runs in one `SERIALIZABLE`
-transaction and is retried from the start if Postgres reports a conflict with a concurrent request, so requests
+transaction and is retried from the start (up to 10 times, exponential backoff with jitter) if Postgres reports a
+conflict with a concurrent request, so requests
 behave as if they ran one at a time, as they did on SQLite (no double redeem, no double sign-up). An API error
 (`HttpError`) still commits what the request wrote before it, such as a counted wrong OTP attempt; work that must be
 all-or-nothing is wrapped in `tx()`, which inside a request becomes a savepoint. Side effects such as sending an SMS
