@@ -8,8 +8,9 @@ decision is needed.
 
 1. `docs/DIRECTION.md`: what we are building and why, plus every decision the owner has made. Decisions there override
    anything else, including older docs and your own preferences.
-2. `docs/QUESTIONS.md`: open questions and the owner's answers. An answer here is a decision; copy it into
-   `docs/DIRECTION.md` (Decision log) in the same run.
+2. `docs/QUESTIONS.md`: open questions and the owner's answers. An answer here is a decision. Its Decision-log line
+   in `docs/DIRECTION.md` goes in the same owner-merged `agent/q-<id>` PR (or its own small owner PR), never in a
+   task PR, so task PRs stay mergeable.
 3. `docs/BACKLOG.md`: the ordered work. Which task to take is defined in step 3 below.
 4. The latest report in `docs/runs/`: what the last run did and what it left open.
 5. `docs/ARCHITECTURE.md` and `docs/POS_INTEGRATION.md`: how the code fits together today.
@@ -32,8 +33,8 @@ One new task per run. Push your work at least every 30 minutes, so other session
    answer on `main`. Leave alone any draft PR updated in the last 90 minutes: another session is working on it. Leave
    alone a PR that failed 3 review rounds until the owner comments on it. A branch whose PR was closed without
    merging needs the owner: report it, don't redo it.
-   If 3 or more open agent PRs are waiting on the owner (not mergeable by you, waiting on a question, or failed 3
-   review rounds), do not start a new task.
+   If 3 or more items are waiting on the owner, do not start a new task. Count a blocked task and its `agent/q-*` PR
+   as one item; also count PRs you cannot merge under step 9 and PRs that failed 3 review rounds.
 3. **Pick one task.** The first `todo` task in `docs/BACKLOG.md` whose `Blocked by` questions are answered and that has
    no open PR and no existing `agent/<task-id>-*` branch. A task whose work PR was merged counts as `done` even if the
    backlog on `main` still says otherwise (a questions-only PR, `agent/q-*`, never makes a task done). Claim it straight away: push branch `agent/<task-id>-<short-slug>` with
@@ -42,7 +43,7 @@ One new task per run. Push your work at least every 30 minutes, so other session
    DIRECTION and QUESTIONS. If a decision is missing and it is a product call (see below):
    - Mark the task `blocked` on its branch and keep its PR as a draft. That PR is never treated as done.
    - Open a separate questions-only PR from `agent/q-<task-id>` that adds the question to `docs/QUESTIONS.md` with your
-     recommendation and the options. The owner answers by filling in **Answer** and merging that PR (it touches
+     recommendation and the options, and a placeholder Decision-log line in `docs/DIRECTION.md` for the owner to fill. The owner answers by filling in **Answer** and merging that PR (it touches
      QUESTIONS.md, so only the owner merges it).
    - Write a short run report on the task branch, tell the owner, and end the run. Never guess a product call.
 5. **Build test-first.** Write or extend tests for the acceptance criteria, then the code. Keep the PR focused:

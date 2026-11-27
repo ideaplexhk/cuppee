@@ -14,11 +14,14 @@ You will be given a backlog task id (e.g. `M3.4`) and a branch name.
 ## What to read
 
 1. `docs/DIRECTION.md`: the product direction and decision log.
-2. The task's acceptance criteria from `main`'s backlog (`git show origin/main:docs/BACKLOG.md`, or `gh/main`), not
-   the branch's copy. Any change the branch makes to `docs/BACKLOG.md` other than its own task's Status cell is a
+Base: the GitHub remote's `main` after `git fetch` (find the remote pointing at github.com with `git remote -v`;
+in a fresh clone it is `origin/main`). Call it BASE below and use it for everything.
+
+2. The task's acceptance criteria from BASE's backlog (`git show BASE:docs/BACKLOG.md`), never the branch's copy. If
+   the backlog or the task is missing on BASE, the verdict is `CHANGES REQUIRED`; do not fall back to the branch. Any change the branch makes to `docs/BACKLOG.md` other than its own task's Status cell is a
    required change.
 3. `CLAUDE.md`: the hard rules and the product-call rules.
-4. The diff: `git diff main...<branch>` and the changed files in full where needed.
+4. The diff: `git diff BASE...<branch>` and the changed files in full where needed.
 
 ## What to check
 
