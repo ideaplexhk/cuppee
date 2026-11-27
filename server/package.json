@@ -1,0 +1,21 @@
+{
+  "name": "@cuppee/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CUPPEE membership API: members, cups, stamps/beans, counter stand, POS adapters. Zero runtime dependencies (Node 22.18+ built-in SQLite, crypto, TypeScript stripping).",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env src/index.ts",
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/index.ts",
+    "seed": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env seed/seed.ts",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.ts",
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^6"
+  }
+}

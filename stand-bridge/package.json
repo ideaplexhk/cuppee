@@ -1,0 +1,16 @@
+{
+  "name": "@cuppee/stand-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Connects an ACS ACR122U (PC/SC) counter stand to the CUPPEE API, with an offline queue.",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/index.ts",
+    "simulate": "node --env-file-if-exists=.env src/simulate.ts",
+    "test": "node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "nfc-pcsc": "^0.8.1"
+  }
+}

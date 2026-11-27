@@ -1,0 +1,72 @@
+{
+  "_note": "Edit this file, then run `npm run seed`. Addresses/coordinates are blank until confirmed with each café; cafés without lat/lng show in the list but not as map pins. Stamp goals, rewards and bean rates are proposals to agree with each café.",
+  "cafes": [
+    {
+      "id": "cafe_cohee",
+      "name": "CoHee Coffee",
+      "district": null,
+      "address": null,
+      "lat": null,
+      "lng": null,
+      "hours": null,
+      "description": "Home café of CUPPEE.",
+      "stamp_goal": 9,
+      "stamp_reward": "Free drink of your choice",
+      "beans_per_visit": 10,
+      "beans_per_10hkd": 1,
+      "pos_provider": "generic",
+      "pos_location_ref": "cohee-01",
+      "staff": [{ "id": "stf_cohee_1", "name": "CoHee Barista", "pin": "1234", "role": "manager" }],
+      "stands": [{ "id": "std_cohee_1", "label": "Main counter" }],
+      "menu": []
+    },
+    {
+      "id": "cafe_forsingle",
+      "name": "For Single",
+      "district": null,
+      "address": null,
+      "lat": null,
+      "lng": null,
+      "hours": null,
+      "description": null,
+      "stamp_goal": 9,
+      "stamp_reward": "Free drink of your choice",
+      "beans_per_visit": 10,
+      "beans_per_10hkd": 1,
+      "pos_provider": null,
+      "pos_location_ref": null,
+      "staff": [{ "id": "stf_forsingle_1", "name": "For Single Barista", "pin": "1234", "role": "manager" }],
+      "stands": [{ "id": "std_forsingle_1", "label": "Counter" }],
+      "menu": []
+    },
+    {
+      "id": "cafe_powpow",
+      "name": "Pow Pow",
+      "district": null,
+      "address": null,
+      "lat": null,
+      "lng": null,
+      "hours": null,
+      "description": "Thai specialty coffee.",
+      "stamp_goal": 9,
+      "stamp_reward": "Free drink of your choice",
+      "beans_per_visit": 10,
+      "beans_per_10hkd": 1,
+      "pos_provider": null,
+      "pos_location_ref": null,
+      "staff": [{ "id": "stf_powpow_1", "name": "Pow Pow Barista", "pin": "1234", "role": "manager" }],
+      "stands": [{ "id": "std_powpow_1", "label": "Counter" }],
+      "menu": []
+    }
+  ],
+  "rewards": [
+    { "id": "rwd_size_up", "title": "Free size-up", "description": "Any partner café", "cost_beans": 50, "cafe_id": null },
+    { "id": "rwd_drink", "title": "Free drink", "description": "Any partner café", "cost_beans": 150, "cafe_id": null },
+    { "id": "rwd_beans_bag", "title": "200 g bag of beans", "description": "At CoHee", "cost_beans": 600, "cafe_id": "cafe_cohee" }
+  ],
+  "demo_cups": [
+    { "uid": "04A1B2C3D4E5F6", "tag_type": "ntag213", "qr_code": "CUP-DEMO-0001", "colourway": "Cream / Orange" },
+    { "uid": "04A1B2C3D4E5F7", "tag_type": "ntag213", "qr_code": "CUP-DEMO-0002", "colourway": "Cream / Orange" },
+    { "uid": "04DE5F1EACC040", "tag_type": "ntag424", "qr_code": "CUP-DEMO-0424", "colourway": "Deep Green / Cream" }
+  ]
+}

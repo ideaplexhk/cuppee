@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "CUPPEE",
+    "slug": "cuppee",
+    "scheme": "cuppee",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F4EBDD",
+    "ios": {
+      "bundleIdentifier": "hk.cuppee.app",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "hk.cuppee.app",
+      "permissions": [
+        "android.permission.NFC",
+        "android.permission.CAMERA"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "CUPPEE uses the camera to scan cup and member QR codes."
+        }
+      ],
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "Tap your CUPPEE cup to link it to your membership.",
+          "selectIdentifiers": [
+            "D2760000850101"
+          ],
+          "includeNdefEntitlement": true
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "apiUrl": "http://localhost:8787"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+node_modules/
+*.db
+*.db-shm
+*.db-wal
+.env
+stand-queue.json*
+.expo/
+ios/
+android/
+dist/
