@@ -6,7 +6,7 @@
             │                                   │ polls 1 s
             └───────────────┬───────────────────┘
                             ▼
-                 CUPPEE API  (server/, Node 22, SQLite)
+                 CUPPEE API  (server/, Node 22, PostgreSQL)
                             ▲                    ▲
      POST /v1/stand/events  │                    │  POST /v1/pos/{provider}/webhook
                             │                    │
@@ -18,7 +18,7 @@
 
 | Folder | What | Runs on |
 | --- | --- | --- |
-| `server/` | API, SQLite database, NTAG 424 SUN verification, loyalty rules, POS adapters. No runtime dependencies. | Any Node 22.18+ host |
+| `server/` | API on PostgreSQL, NTAG 424 SUN verification, loyalty rules, POS adapters. One runtime dependency (`pg`). | Any Node 22.18+ host with PostgreSQL |
 | `app/` | Expo (SDK 58) app. Member tabs: Card, Rewards, Cafés, Me. Staff mode for the counter tablet. | iOS / Android (dev build for NFC) |
 | `stand-bridge/` | Reads the cup on the counter stand and posts events, queueing up to 100 when offline. | PC / mini PC / Raspberry Pi with the reader |
 
@@ -27,13 +27,23 @@
 All SQL lives in `server/src/data/`, one module per area: `identity` (OTP, sessions, members, staff), `cups`,
 `loyalty` (cafés, menus, visits, ledger, rewards), `stand`, `pos` and `catalogue` (seed and set-up). Services,
 routes and the seed script call these functions and never run SQL themselves; `server/test/data-layer.test.ts`
-fails if they do. This is the seam for the move to PostgreSQL (M1.2, M1.3).
+fails if they do.
 
 PostgreSQL schema (M1.2): `server/migrations/NNNN_name.sql`, applied in order by `server/src/migrate.ts`
 (`DATABASE_URL=... node src/migrate.ts`). Each file runs in its own transaction and is recorded with a checksum in
 `schema_migrations`; an applied file that is later edited is refused, so changes always go in a new file.
-`0001_init.sql` matches the SQLite tables, with money as `NUMERIC(10,2)` and an `id` on `otp_codes`. The server
-still runs on SQLite until the port (M1.3).
+`0001_init.sql` matches the old SQLite tables (a snapshot of them is kept in `server/test/fixtures/` and the schema
+test compares against it), with money as `NUMERIC(10,2)` and an `id` on `otp_codes`. The server and the seed script
+apply pending migrations when they start.
+
+Transactions (M1.3): `server/src/db.ts` wraps a `pg` pool. Every HTTP request runs in one `SERIALIZABLE`
+transaction and is retried from the start if Postgres reports a conflict with a concurrent request, so requests
+behave as if they ran one at a time, as they did on SQLite (no double redeem, no double sign-up). An API error
+(`HttpError`) still commits what the request wrote before it, such as a counted wrong OTP attempt; work that must be
+all-or-nothing is wrapped in `tx()`, which inside a request becomes a savepoint. Side effects such as sending an SMS
+go through `db.afterCommit()`, so they never happen for a rolled-back or retried attempt. BIGINT times and counts
+and NUMERIC money are returned as JavaScript numbers. Tests need `DATABASE_URL` (CI runs a Postgres service); each
+test file works in its own throwaway schema.
 
 ## Identity: how a cup proves it's real
 
