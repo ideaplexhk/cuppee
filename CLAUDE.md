@@ -43,7 +43,9 @@ One new task per run. Push your work at least every 30 minutes, so other session
    DIRECTION and QUESTIONS. If a decision is missing and it is a product call (see below):
    - Mark the task `blocked` on its branch and keep its PR as a draft. That PR is never treated as done.
    - Open a separate questions-only PR from `agent/q-<task-id>` that adds the question to `docs/QUESTIONS.md` with your
-     recommendation and the options, and a placeholder Decision-log line in `docs/DIRECTION.md` for the owner to fill. The owner answers by filling in **Answer** and merging that PR (it touches
+     recommendation and the options, and a placeholder Decision-log line in `docs/DIRECTION.md` for the owner to fill.
+     When resuming, the **Answer** in QUESTIONS.md is the decision; if the Decision-log line was left as a
+     placeholder, fill it in a small separate PR for the owner, never in the task PR. The owner answers by filling in **Answer** and merging that PR (it touches
      QUESTIONS.md, so only the owner merges it).
    - Write a short run report on the task branch, tell the owner, and end the run. Never guess a product call.
 5. **Build test-first.** Write or extend tests for the acceptance criteria, then the code. Keep the PR focused:
