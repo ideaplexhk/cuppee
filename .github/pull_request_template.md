@@ -14,7 +14,7 @@ Backlog: `M?.?` <task name>
 
 - `scripts/verify.sh`: PASS / FAIL / could not run (say why)
 - Screenshots (changed screens, 1280×800 and 1180×820, EN and 繁中): attached / not applicable
-- Reviewer agent: `VERDICT: PASS` after <n> round(s) / draft with open findings below
+- Reviewer agent: `VERDICT: PASS @ <head sha>` after <n> round(s) (also posted as a PR comment) / draft with open findings below
 
 ## Decisions I made myself
 

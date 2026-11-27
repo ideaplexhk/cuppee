@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Independent reviewer for CUPPEE agent pull requests. Use after a task is built and before the PR is opened. Give it the task id and branch only, so it judges the work fresh.
+description: Independent reviewer for CUPPEE agent pull requests. Use when a task's branch is ready, and again after any new commit on an open PR. Give it the task id and branch only, so it judges the work fresh.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -36,7 +36,8 @@ You will be given a backlog task id (e.g. `M3.4`) and a branch name.
 
 ## Output
 
-Start with one line: `VERDICT: PASS` or `VERDICT: CHANGES REQUIRED`.
+Start with one line: `VERDICT: PASS @ <head sha>` or `VERDICT: CHANGES REQUIRED @ <head sha>`, naming the exact
+commit you reviewed (`git rev-parse <branch>`).
 
 Then list findings, most serious first. For each: file and line, what is wrong, a concrete failure scenario, and
 whether it is `required` or `suggestion`. Only `required` findings block the PR. Do not pad the list: if the work is

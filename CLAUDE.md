@@ -16,35 +16,56 @@ decision is needed.
 
 ## Every run
 
-1. **Sync.** `git fetch` and start a branch from the latest `main`: `agent/<task-id>-<short-slug>`.
-   If 3 or more agent PRs are open (ones that could not be merged), do not start a new task: work on what is blocking
-   them first.
-2. **Pick one task.** The first `todo` task in `docs/BACKLOG.md` whose `Blocked by` questions are all answered.
-   Mark it `doing` in the backlog on your branch.
-3. **Check for product calls.** Before writing code, list the decisions the task needs. For each one, check
+1. **Sync.** `git fetch`, start from the latest `main`. Another run (hourly overnight, or an on-demand session) may
+   be working at the same time.
+2. **Finish open agent PRs first.** Merge the ones that meet the merge rule (below), fix red CI on their branches and
+   answer human comments. Leave alone any draft PR updated in the last 90 minutes: another session is working on it.
+   If 3 or more open agent PRs (including drafts) are waiting on the owner, do not start a new task.
+3. **Pick one task.** The first `todo` task in `docs/BACKLOG.md` whose `Blocked by` questions are answered and that has
+   no open PR and no existing `agent/<task-id>-*` branch. A task whose PR was merged counts as `done` even if the
+   backlog on `main` still says otherwise. Claim it straight away: push branch `agent/<task-id>-<short-slug>` with
+   the task marked `doing`, and open a draft PR.
+4. **Check for product calls.** Before writing code, list the decisions the task needs. For each one, check
    DIRECTION and QUESTIONS. If a decision is missing and it is a product call (see below), add it to
    `docs/QUESTIONS.md` with your recommendation and the options, mark the task `blocked`, and move to the next task.
    Never guess a product call.
-4. **Build test-first.** Write or extend tests for the acceptance criteria, then the code. Keep the PR focused:
+5. **Build test-first.** Write or extend tests for the acceptance criteria, then the code. Keep the PR focused:
    one task, ideally under ~500 changed lines (excluding generated files and lockfiles).
-5. **Prove it (self-proof gates, all required):**
+6. **Report before review.** Write `docs/runs/YYYY-MM-DD-<task-id>.md` (template in `docs/runs/README.md`) on the
+   branch now, so the report is part of what gets reviewed and checked.
+7. **Prove it (self-proof gates, all required):**
    - `scripts/verify.sh` passes: type checks and tests for `server/`, `stand-bridge/` and `app/`.
    - Any change to a screen: run `scripts/verify.sh --screens` and attach the screenshots to the PR, for both tablet
      sizes (Android 1280×800, iPad 1180×820) and both languages (English, 繁體中文).
-   - **Independent review:** spawn the `reviewer` agent (`.claude/agents/reviewer.md`). Give it only the task id, the
-     branch name and the paths to DIRECTION and BACKLOG, not your own reasoning, so it judges the work fresh. Fix
-     everything it marks as required and re-run it. After 3 rounds without a PASS, open the PR as a draft and list
-     what is still failing.
-6. **Ship.** Push the branch and open a PR using `.github/pull_request_template.md`. Never push to `main` directly and
-   never force-push a branch someone else has commented on.
-7. **Merge (owner decision 2026-11-28).** Merge your own PR (squash) only when all of these hold: CI `verify` is green
-   on the PR's current head, the reviewer's latest verdict is `PASS`, the PR is not a draft, it has no merge
-   conflict, and no human has left an unresolved comment or requested changes. Then mark the task `done` in the
-   backlog (in the next branch). If any condition fails, leave the PR open for the owner. The owner reviews merged
-   work after the fact and can revert.
-8. **Report.** Write `docs/runs/YYYY-MM-DD-<task-id>.md` (template in `docs/runs/README.md`) on the branch, and end
-   the run with a short message to the owner: what shipped, the PR link, the reviewer verdict, and any new questions,
-   each with your recommended answer.
+   - **Independent review:** spawn the `reviewer` agent (`.claude/agents/reviewer.md`). Give it only the task id and
+     the branch name, not your own reasoning, so it judges the work fresh. Fix everything it marks as required and
+     re-run it. After 3 rounds without a PASS, leave the PR as a draft and list what is still failing.
+   - When the reviewer passes the branch's final head, post a PR comment `VERDICT: PASS @ <head sha>`. Any commit
+     after that, for any reason, needs a new review round and a new comment.
+8. **Ship.** Push the branch (never directly to `main`, never force-push a branch someone else has commented on) and
+   mark the PR ready for review.
+9. **Merge (owner decision 2026-11-28).** Merge your own PR only if ALL of these hold:
+   - It is from an `agent/` branch, is not a draft, and has no merge conflict.
+   - It does not touch `CLAUDE.md`, `.claude/`, `docs/DIRECTION.md`, `scripts/verify.sh` or `.github/`. Changes to
+     the agent's own rules and gates always wait for the owner.
+   - The branch contains the latest `main`. If not, merge `main` into it; CI and review then run again.
+   - The `verify` check run on the current head SHA finished with conclusion `success` (not pending or skipped).
+   - Your `VERDICT: PASS @ <sha>` comment names the current head SHA.
+   - No human has an open review thread, a "changes requested" review, or a PR comment you have not answered. You
+     never resolve a human's thread or dismiss a human's review: only that person does.
+
+   Merge with the expected head SHA so nothing can slip in between the check and the merge:
+   `gh api -X PUT repos/ideaplexhk/cuppee/pulls/<n>/merge -f merge_method=squash -f sha=<head sha>`.
+   If any condition fails, leave the PR open and say why in the run message. The owner reviews merged work after
+   the fact and can revert.
+10. **Tell the owner.** Only when there is something for them: a new question (with your recommended answer and the
+   task it unblocks), a PR waiting on them and why, or the night's summary from the last overnight run (07:00 HK). An
+   on-demand run always ends with a short summary.
+
+GitHub from these sessions: open and update PRs with the REST API through `gh api` (the GitHub connector and GraphQL
+are refused). Open: `gh api repos/ideaplexhk/cuppee/pulls -f title=... -f head=... -f base=main -F draft=true
+-F body=@<file>`. Ready: `gh api -X POST repos/ideaplexhk/cuppee/pulls/<n>/ccr/ready_for_review`. CI:
+`gh api repos/ideaplexhk/cuppee/commits/<sha>/check-runs`.
 
 If `verify.sh` cannot run (for example, package installs are blocked), say so plainly in the report and the PR. Do
 not claim a gate passed that did not run.
