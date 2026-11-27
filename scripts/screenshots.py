@@ -17,7 +17,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
@@ -176,10 +178,19 @@ class SpaHandler(SimpleHTTPRequestHandler):
         pass
 
 
+def port_in_use(port: int) -> bool:
+    with socket.socket() as sock:
+        return sock.connect_ex(("127.0.0.1", port)) == 0
+
+
 def main() -> int:
     from playwright.sync_api import sync_playwright
 
     screens = load_screens(ROOT / "scripts" / "screens.json")
+    for port in (API_PORT, WEB_PORT):
+        if port_in_use(port):
+            raise SystemExit(f"port {port} is already in use; stop that process (or set SCREENS_API_PORT / "
+                             "SCREENS_WEB_PORT) so screenshots use the throwaway dev database")
     work = Path(tempfile.mkdtemp(prefix="cuppee-screens-"))
     env = {**os.environ, "NODE_ENV": "development", "PORT": str(API_PORT), "DB_PATH": str(work / "screens.db"),
            "EXPO_PUBLIC_API_URL": API, "CI": "1"}
@@ -198,6 +209,8 @@ def main() -> int:
         httpd = ThreadingHTTPServer(("127.0.0.1", WEB_PORT), partial(SpaHandler, root=web_dir))
         threading.Thread(target=httpd.serve_forever, daemon=True).start()
         wait_for(f"{API}/health")
+        if procs[0].poll() is not None:
+            raise SystemExit("the API process exited; screenshots would not use the throwaway dev database")
         wait_for(WEB)
         auth = sessions()
 
@@ -238,6 +251,7 @@ def main() -> int:
                 os.killpg(pr.pid, signal.SIGTERM)
             except ProcessLookupError:
                 pass
+        shutil.rmtree(work, ignore_errors=True)
 
 
 if __name__ == "__main__":

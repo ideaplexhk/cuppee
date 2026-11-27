@@ -81,8 +81,8 @@ export default function StaffHome() {
   function visitToast(name: string | null, v: VisitResult) {
     const who = name ?? 'Member';
     if (v.cooldown) return setToast(`${who}: visit noted (already stamped in the last few minutes)`);
-    const ready = v.balances.stampCardReady ? ' · stamp card complete!' : '';
-    setToast(`${who}: +1 stamp (${v.balances.stamps}/${v.balances.stampGoal}), +${v.awarded.beans} beans${ready}`);
+    const doneNote = v.balances.stampCardReady ? ' · stamp card complete!' : '';
+    setToast(`${who}: +1 stamp (${v.balances.stamps}/${v.balances.stampGoal}), +${v.awarded.beans} beans${doneNote}`);
   }
 
   async function confirm(e: FeedEvent) {
