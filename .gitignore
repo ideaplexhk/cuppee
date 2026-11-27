@@ -9,3 +9,4 @@ ios/
 android/
 dist/
 screenshots/
+__pycache__/

@@ -49,6 +49,9 @@ else
   skipped+=("app tests (no test script yet)")
 fi
 
+step "scripts: tests (screenshot harness helpers)"
+python3 -m unittest discover -s scripts -p 'test_*.py'; ran+=("scripts tests")
+
 if [[ $SCREENS -eq 1 ]]; then
   step "screenshots"
   python3 scripts/screenshots.py; ran+=("screenshots")
