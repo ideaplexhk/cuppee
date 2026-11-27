@@ -57,7 +57,7 @@ Exact numbers (expiry time, no-show limit) are open questions.
 | 2026-11-28 | Target both Android tablets and iPads from the start. |
 | 2026-11-28 | Languages: English and Traditional Chinese (Hong Kong), switchable. |
 | 2026-11-28 | Agent works in a GitHub repo through pull requests, decides code details itself and asks on product calls. |
-| 2026-11-28 | The agent merges its own PRs when CI is green on the current head and the reviewer has passed that exact commit (CLAUDE.md step 9). Changes to the agent's own rules and gates (CLAUDE.md, .claude/, DIRECTION, verify.sh, .github/) always wait for the owner. Product calls still go to the owner. |
+| 2026-11-28 | The agent merges its own PRs when CI is green on the current head and the reviewer has passed that exact commit (CLAUDE.md step 9). Changes to the agent's own rules, gates or the owner's decisions (CLAUDE.md, .claude/, DIRECTION, QUESTIONS, scripts/, .github/, tsconfigs, package.json scripts) always wait for the owner. Product calls still go to the owner. |
 | 2026-11-28 | Runs back-to-back overnight: hourly from 23:00 to 07:00 HK time, plus on demand. |
 | 2026-11-28 | Self-proof: automated tests and type checks, screenshots of changed screens, and an independent reviewer agent on every PR. |
 

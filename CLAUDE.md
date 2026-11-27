@@ -10,57 +10,73 @@ decision is needed.
    anything else, including older docs and your own preferences.
 2. `docs/QUESTIONS.md`: open questions and the owner's answers. An answer here is a decision; copy it into
    `docs/DIRECTION.md` (Decision log) in the same run.
-3. `docs/BACKLOG.md`: the ordered work. Take the first task that is `todo` and not blocked.
+3. `docs/BACKLOG.md`: the ordered work. Which task to take is defined in step 3 below.
 4. The latest report in `docs/runs/`: what the last run did and what it left open.
 5. `docs/ARCHITECTURE.md` and `docs/POS_INTEGRATION.md`: how the code fits together today.
 
+## Identity on GitHub
+
+The agent posts as the owner's own GitHub account, so a comment's login does not say who wrote it. Start every PR
+body, comment and reply you write with `[cuppee-agent]`. Any comment without that marker is from the owner (a human).
+Only a `[cuppee-agent] VERDICT: PASS @ <sha>` comment counts as a reviewer pass.
+
 ## Every run
+
+One new task per run. Push your work at least every 30 minutes, so other sessions can see it is alive.
 
 1. **Sync.** `git fetch`, start from the latest `main`. Another run (hourly overnight, or an on-demand session) may
    be working at the same time.
 2. **Finish open agent PRs first.** Merge the ones that meet the merge rule (below), fix red CI on their branches and
-   answer human comments. Leave alone any draft PR updated in the last 90 minutes: another session is working on it.
-   If 3 or more open agent PRs (including drafts) are waiting on the owner, do not start a new task.
+   answer human comments (with the marker). Resume your own draft PRs whose blocking question in `docs/QUESTIONS.md`
+   now has an answer. Leave alone any draft PR updated in the last 90 minutes: another session is working on it. A
+   branch whose PR was closed without merging needs the owner: report it, don't redo it.
+   If 3 or more open agent PRs are waiting on the owner (ready for review but not mergeable by you, or waiting on a
+   question), do not start a new task.
 3. **Pick one task.** The first `todo` task in `docs/BACKLOG.md` whose `Blocked by` questions are answered and that has
    no open PR and no existing `agent/<task-id>-*` branch. A task whose PR was merged counts as `done` even if the
    backlog on `main` still says otherwise. Claim it straight away: push branch `agent/<task-id>-<short-slug>` with
    the task marked `doing`, and open a draft PR.
 4. **Check for product calls.** Before writing code, list the decisions the task needs. For each one, check
    DIRECTION and QUESTIONS. If a decision is missing and it is a product call (see below), add it to
-   `docs/QUESTIONS.md` with your recommendation and the options, mark the task `blocked`, and move to the next task.
-   Never guess a product call.
+   `docs/QUESTIONS.md` on the task's branch with your recommendation and the options, mark the task `blocked`, mark
+   the PR ready so the owner sees the question, and end the run. Never guess a product call.
 5. **Build test-first.** Write or extend tests for the acceptance criteria, then the code. Keep the PR focused:
    one task, ideally under ~500 changed lines (excluding generated files and lockfiles).
 6. **Report before review.** Write `docs/runs/YYYY-MM-DD-<task-id>.md` (template in `docs/runs/README.md`) on the
-   branch now, so the report is part of what gets reviewed and checked.
+   branch now, so the report is part of what gets reviewed and checked. The reviewer's verdict and SHA go only in
+   the PR comment, never in the report (a commit cannot contain its own SHA).
 7. **Prove it (self-proof gates, all required):**
    - `scripts/verify.sh` passes: type checks and tests for `server/`, `stand-bridge/` and `app/`.
    - Any change to a screen: run `scripts/verify.sh --screens` and attach the screenshots to the PR, for both tablet
      sizes (Android 1280×800, iPad 1180×820) and both languages (English, 繁體中文).
    - **Independent review:** spawn the `reviewer` agent (`.claude/agents/reviewer.md`). Give it only the task id and
      the branch name, not your own reasoning, so it judges the work fresh. Fix everything it marks as required and
-     re-run it. After 3 rounds without a PASS, leave the PR as a draft and list what is still failing.
-   - When the reviewer passes the branch's final head, post a PR comment `VERDICT: PASS @ <head sha>`. Any commit
+     re-run it. After 3 rounds without a PASS, leave the PR as a draft, list what is still failing, and tell the
+     owner: it then waits for the owner.
+   - When the reviewer passes the branch's final head, post a PR comment `[cuppee-agent] VERDICT: PASS @ <head sha>`. Any commit
      after that, for any reason, needs a new review round and a new comment.
 8. **Ship.** Push the branch (never directly to `main`, never force-push a branch someone else has commented on) and
    mark the PR ready for review.
 9. **Merge (owner decision 2026-11-28).** Merge your own PR only if ALL of these hold:
    - It is from an `agent/` branch, is not a draft, and has no merge conflict.
-   - It does not touch `CLAUDE.md`, `.claude/`, `docs/DIRECTION.md`, `scripts/verify.sh` or `.github/`. Changes to
-     the agent's own rules and gates always wait for the owner.
+   - It does not change anything that defines the agent's rules, its gates or the owner's decisions. That includes
+     `CLAUDE.md`, `.claude/`, `docs/DIRECTION.md`, `docs/QUESTIONS.md`, everything in `scripts/`, `.github/`, any
+     `tsconfig*.json`, and the `"scripts"` field of any `package.json`. Those always wait for the owner.
    - The branch contains the latest `main`. If not, merge `main` into it; CI and review then run again.
    - The `verify` check run on the current head SHA finished with conclusion `success` (not pending or skipped).
-   - Your `VERDICT: PASS @ <sha>` comment names the current head SHA.
-   - No human has an open review thread, a "changes requested" review, or a PR comment you have not answered. You
-     never resolve a human's thread or dismiss a human's review: only that person does.
+   - Your `[cuppee-agent] VERDICT: PASS @ <sha>` comment names the current head SHA.
+   - Every comment without the `[cuppee-agent]` marker has been answered, no human review thread is open, and the
+     owner has not asked you to hold, wait or not merge. You never resolve a human's thread or dismiss a human's
+     review: only that person does.
 
    Merge with the expected head SHA so nothing can slip in between the check and the merge:
    `gh api -X PUT repos/ideaplexhk/cuppee/pulls/<n>/merge -f merge_method=squash -f sha=<head sha>`.
    If any condition fails, leave the PR open and say why in the run message. The owner reviews merged work after
    the fact and can revert.
 10. **Tell the owner.** Only when there is something for them: a new question (with your recommended answer and the
-   task it unblocks), a PR waiting on them and why, or the night's summary from the last overnight run (07:00 HK). An
-   on-demand run always ends with a short summary.
+   task it unblocks), a PR waiting on them and why, or the night's summary from the run that starts at 07:17 HK (PRs
+   merged since 23:00, PRs waiting on the owner, open questions, what is next). An on-demand run always ends with a
+   short summary.
 
 GitHub from these sessions: open and update PRs with the REST API through `gh api` (the GitHub connector and GraphQL
 are refused). Open: `gh api repos/ideaplexhk/cuppee/pulls -f title=... -f head=... -f base=main -F draft=true
