@@ -1,0 +1,7 @@
+[
+  { "name": "sign-in", "path": "/sign-in" },
+  { "name": "member-card", "path": "/card" },
+  { "name": "rewards", "path": "/rewards" },
+  { "name": "staff-login", "path": "/staff/login" },
+  { "name": "staff-home", "path": "/staff" }
+]
