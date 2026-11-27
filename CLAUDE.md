@@ -18,7 +18,8 @@ decision is needed.
 
 The agent posts as the owner's own GitHub account, so a comment's login does not say who wrote it. Start every PR
 body, comment and reply you write with `[cuppee-agent]`. Any comment without that marker is from the owner (a human).
-Only a `[cuppee-agent] VERDICT: PASS @ <sha>` comment counts as a reviewer pass.
+Only a `[cuppee-agent] VERDICT: PASS @ <sha>` comment counts as a reviewer pass. The owner should add a new comment
+rather than edit an agent-marked one, because edits cannot be told apart.
 
 ## Every run
 
@@ -27,19 +28,23 @@ One new task per run. Push your work at least every 30 minutes, so other session
 1. **Sync.** `git fetch`, start from the latest `main`. Another run (hourly overnight, or an on-demand session) may
    be working at the same time.
 2. **Finish open agent PRs first.** Merge the ones that meet the merge rule (below), fix red CI on their branches and
-   answer human comments (with the marker). Resume your own draft PRs whose blocking question in `docs/QUESTIONS.md`
-   now has an answer. Leave alone any draft PR updated in the last 90 minutes: another session is working on it. A
-   branch whose PR was closed without merging needs the owner: report it, don't redo it.
-   If 3 or more open agent PRs are waiting on the owner (ready for review but not mergeable by you, or waiting on a
-   question), do not start a new task.
+   answer human comments (with the marker). Resume any agent PR whose task is `blocked` once its question has an
+   answer on `main`. Leave alone any draft PR updated in the last 90 minutes: another session is working on it. Leave
+   alone a PR that failed 3 review rounds until the owner comments on it. A branch whose PR was closed without
+   merging needs the owner: report it, don't redo it.
+   If 3 or more open agent PRs are waiting on the owner (not mergeable by you, waiting on a question, or failed 3
+   review rounds), do not start a new task.
 3. **Pick one task.** The first `todo` task in `docs/BACKLOG.md` whose `Blocked by` questions are answered and that has
-   no open PR and no existing `agent/<task-id>-*` branch. A task whose PR was merged counts as `done` even if the
-   backlog on `main` still says otherwise. Claim it straight away: push branch `agent/<task-id>-<short-slug>` with
+   no open PR and no existing `agent/<task-id>-*` branch. A task whose work PR was merged counts as `done` even if the
+   backlog on `main` still says otherwise (a questions-only PR, `agent/q-*`, never makes a task done). Claim it straight away: push branch `agent/<task-id>-<short-slug>` with
    the task marked `doing`, and open a draft PR.
 4. **Check for product calls.** Before writing code, list the decisions the task needs. For each one, check
-   DIRECTION and QUESTIONS. If a decision is missing and it is a product call (see below), add it to
-   `docs/QUESTIONS.md` on the task's branch with your recommendation and the options, mark the task `blocked`, mark
-   the PR ready so the owner sees the question, and end the run. Never guess a product call.
+   DIRECTION and QUESTIONS. If a decision is missing and it is a product call (see below):
+   - Mark the task `blocked` on its branch and keep its PR as a draft. That PR is never treated as done.
+   - Open a separate questions-only PR from `agent/q-<task-id>` that adds the question to `docs/QUESTIONS.md` with your
+     recommendation and the options. The owner answers by filling in **Answer** and merging that PR (it touches
+     QUESTIONS.md, so only the owner merges it).
+   - Write a short run report on the task branch, tell the owner, and end the run. Never guess a product call.
 5. **Build test-first.** Write or extend tests for the acceptance criteria, then the code. Keep the PR focused:
    one task, ideally under ~500 changed lines (excluding generated files and lockfiles).
 6. **Report before review.** Write `docs/runs/YYYY-MM-DD-<task-id>.md` (template in `docs/runs/README.md`) on the
@@ -59,9 +64,10 @@ One new task per run. Push your work at least every 30 minutes, so other session
    mark the PR ready for review.
 9. **Merge (owner decision 2026-11-28).** Merge your own PR only if ALL of these hold:
    - It is from an `agent/` branch, is not a draft, and has no merge conflict.
-   - It does not change anything that defines the agent's rules, its gates or the owner's decisions. That includes
-     `CLAUDE.md`, `.claude/`, `docs/DIRECTION.md`, `docs/QUESTIONS.md`, everything in `scripts/`, `.github/`, any
-     `tsconfig*.json`, and the `"scripts"` field of any `package.json`. Those always wait for the owner.
+   - It does not change anything that defines the agent's rules, its gates, the work or the owner's decisions. That
+     includes `CLAUDE.md`, `.claude/`, `docs/DIRECTION.md`, `docs/QUESTIONS.md`, everything in `scripts/`,
+     `.github/`, any `tsconfig*.json`, the `"scripts"` field of any `package.json`, and any change to
+     `docs/BACKLOG.md` other than its own task's Status cell. Those always wait for the owner.
    - The branch contains the latest `main`. If not, merge `main` into it; CI and review then run again.
    - The `verify` check run on the current head SHA finished with conclusion `success` (not pending or skipped).
    - Your `[cuppee-agent] VERDICT: PASS @ <sha>` comment names the current head SHA.
@@ -74,8 +80,8 @@ One new task per run. Push your work at least every 30 minutes, so other session
    If any condition fails, leave the PR open and say why in the run message. The owner reviews merged work after
    the fact and can revert.
 10. **Tell the owner.** Only when there is something for them: a new question (with your recommended answer and the
-   task it unblocks), a PR waiting on them and why, or the night's summary from the run that starts at 07:17 HK (PRs
-   merged since 23:00, PRs waiting on the owner, open questions, what is next). An on-demand run always ends with a
+   task it unblocks), a PR waiting on them and why, or, from the last scheduled run of the night, a summary of the
+   night (PRs merged since 23:00 HK, PRs waiting on the owner, open questions, what is next). An on-demand run always ends with a
    short summary.
 
 GitHub from these sessions: open and update PRs with the REST API through `gh api` (the GitHub connector and GraphQL

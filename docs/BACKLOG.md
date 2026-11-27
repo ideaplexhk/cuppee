@@ -1,6 +1,6 @@
 # CUPPEE backlog
 
-Ordered. The agent takes the first `todo` task whose `Blocked by` questions (see `QUESTIONS.md`) are answered.
+Ordered. Which task the agent takes next is defined in `CLAUDE.md` step 3.
 Status: `todo` · `doing` · `blocked` · `review` (PR open) · `done`. The owner may reorder or edit anything here.
 
 ## M0. Agent harness: make self-proof real

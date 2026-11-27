@@ -14,7 +14,9 @@ You will be given a backlog task id (e.g. `M3.4`) and a branch name.
 ## What to read
 
 1. `docs/DIRECTION.md`: the product direction and decision log.
-2. `docs/BACKLOG.md`: the task's acceptance criteria.
+2. The task's acceptance criteria from `main`'s backlog (`git show origin/main:docs/BACKLOG.md`, or `gh/main`), not
+   the branch's copy. Any change the branch makes to `docs/BACKLOG.md` other than its own task's Status cell is a
+   required change.
 3. `CLAUDE.md`: the hard rules and the product-call rules.
 4. The diff: `git diff main...<branch>` and the changed files in full where needed.
 
