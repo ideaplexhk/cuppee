@@ -43,7 +43,8 @@ WEB_PORT = int(os.environ.get("SCREENS_WEB_PORT", "8081"))
 API = f"http://localhost:{API_PORT}"
 WEB = f"http://localhost:{WEB_PORT}"
 
-# Dev seed accounts only (server/seed/seed-data.json). Not real people.
+# Dev seed accounts only (server/seed/seed-data.json). Not real people. The phone number only ever reaches the
+# dev-mode console SMS adapter on a throwaway database; never point this harness at a real SMS provider.
 DEV_MEMBER = {"phone": "90000001", "displayName": "Demo Member"}
 DEV_STAFF = {"cafeId": "cafe_cohee", "staffId": "stf_cohee_1", "pin": "1234"}
 
