@@ -21,7 +21,7 @@ type Ctx = {
   rawBody: string;
   principal: Principal | null;
 };
-type Handler = (c: Ctx) => unknown;
+type Handler = (c: Ctx) => unknown | Promise<unknown>;
 type Route = { method: string; re: RegExp; keys: string[]; handler: Handler };
 
 function route(method: string, path: string, handler: Handler): Route {
@@ -55,20 +55,20 @@ export function buildRoutes(db: DB, cfg: Config, sms: SmsSender): Route[] {
     // ---- member auth
     route('POST', '/v1/auth/otp/request', (c) => requestOtp(db, cfg, sms, c.body?.phone)),
     route('POST', '/v1/auth/otp/verify', (c) => verifyOtp(db, c.body?.phone, c.body?.code, c.body?.displayName)),
-    route('POST', '/v1/auth/logout', (c) => (logout(db, c.req.headers.authorization), { ok: true })),
+    route('POST', '/v1/auth/logout', async (c) => (await logout(db, c.req.headers.authorization), { ok: true })),
 
     // ---- member
     route('GET', '/v1/me', (c) => memberSummary(db, member(c).memberId)),
-    route('PATCH', '/v1/me', (c) => {
+    route('PATCH', '/v1/me', async (c) => {
       const { memberId } = member(c);
       const name = typeof c.body?.displayName === 'string' ? c.body.displayName.trim().slice(0, 40) : undefined;
       const prefs = c.body?.preferences && typeof c.body.preferences === 'object' ? c.body.preferences : undefined;
-      if (name !== undefined) setMemberDisplayName(db, memberId, name || null);
+      if (name !== undefined) await setMemberDisplayName(db, memberId, name || null);
       if (prefs) {
-        const cur = JSON.parse(memberPreferencesJson(db, memberId));
+        const cur = JSON.parse(await memberPreferencesJson(db, memberId));
         const allowed = ['drink', 'milk', 'sweetness', 'temperature', 'notes'];
         for (const k of allowed) if (k in prefs) cur[k] = String(prefs[k]).slice(0, 80);
-        setMemberPreferencesJson(db, memberId, JSON.stringify(cur));
+        await setMemberPreferencesJson(db, memberId, JSON.stringify(cur));
       }
       return memberSummary(db, memberId);
     }),
@@ -79,7 +79,7 @@ export function buildRoutes(db: DB, cfg: Config, sms: SmsSender): Route[] {
     }),
     route('GET', '/v1/me/cups', (c) => listCups(db, member(c).memberId)),
     route('POST', '/v1/me/cups', (c) => tx(db, () => linkCup(db, cfg, member(c).memberId, tapFromBody(c.body), c.body?.nickname))),
-    route('DELETE', '/v1/me/cups/:id', (c) => (unlinkCup(db, member(c).memberId, c.params.id), { ok: true })),
+    route('DELETE', '/v1/me/cups/:id', async (c) => (await unlinkCup(db, member(c).memberId, c.params.id), { ok: true })),
 
     // ---- public catalogue
     route('GET', '/v1/cafes', () => listCafes(db)),
@@ -88,21 +88,21 @@ export function buildRoutes(db: DB, cfg: Config, sms: SmsSender): Route[] {
     // ---- staff (café tablet)
     route('GET', '/v1/staff/cafes/:cafeId/staff', (c) => staffList(db, c.params.cafeId)),
     route('POST', '/v1/staff/login', (c) => staffLogin(db, c.body?.cafeId, c.body?.staffId, c.body?.pin)),
-    route('GET', '/v1/staff/feed', (c) => {
+    route('GET', '/v1/staff/feed', async (c) => {
       const s = staff(c);
-      return { cafe: { id: s.cafeId, name: getCafe(db, s.cafeId).name }, events: staffFeed(db, cfg, s.cafeId), serverTime: Date.now() };
+      return { cafe: { id: s.cafeId, name: (await getCafe(db, s.cafeId)).name }, events: await staffFeed(db, cfg, s.cafeId), serverTime: Date.now() };
     }),
     route('POST', '/v1/staff/events/:id/confirm', (c) => confirmEvent(db, cfg, staff(c), c.params.id)),
-    route('POST', '/v1/staff/events/:id/dismiss', (c) => (dismissEvent(db, staff(c), c.params.id), { ok: true })),
+    route('POST', '/v1/staff/events/:id/dismiss', async (c) => (await dismissEvent(db, staff(c), c.params.id), { ok: true })),
     // Fallback when a member has no cup with them: scan the QR on their phone.
-    route('POST', '/v1/staff/card/lookup', (c) => {
+    route('POST', '/v1/staff/card/lookup', async (c) => {
       const s = staff(c);
       const memberId = verifyCardCode(cfg.cardSecret, c.body?.code);
       if (!memberId) throw new HttpError(400, 'card_expired', 'Card code expired. Ask the member to refresh.');
-      const m = memberForStaff(db, memberId);
-      const cafe = getCafe(db, s.cafeId);
-      const st = stamps(db, memberId, s.cafeId);
-      return { member: { ...m, preferences: JSON.parse(m.preferences) }, stamps: st, stampGoal: cafe.stamp_goal, stampCardReady: st >= cafe.stamp_goal, beans: beans(db, memberId) };
+      const m = (await memberForStaff(db, memberId))!;
+      const cafe = await getCafe(db, s.cafeId);
+      const st = await stamps(db, memberId, s.cafeId);
+      return { member: { ...m, preferences: JSON.parse(m.preferences) }, stamps: st, stampGoal: cafe.stamp_goal, stampCardReady: st >= cafe.stamp_goal, beans: await beans(db, memberId) };
     }),
     route('POST', '/v1/staff/visits', (c) => {
       const s = staff(c);
@@ -118,16 +118,23 @@ export function buildRoutes(db: DB, cfg: Config, sms: SmsSender): Route[] {
       const s = staff(c);
       return tx(db, () => redeemReward(db, String(c.body?.memberId), s.cafeId, String(c.body?.rewardId), s.staffId));
     }),
-    route('GET', '/v1/staff/member/:id/balances', (c) => {
+    route('GET', '/v1/staff/member/:id/balances', async (c) => {
       const s = staff(c);
-      const cafe = getCafe(db, s.cafeId);
-      const st = stamps(db, c.params.id, s.cafeId);
-      return { stamps: st, stampGoal: cafe.stamp_goal, stampCardReady: st >= cafe.stamp_goal, stampReward: cafe.stamp_reward, beans: beans(db, c.params.id), rewards: listRewards(db) };
+      const cafe = await getCafe(db, s.cafeId);
+      const st = await stamps(db, c.params.id, s.cafeId);
+      return {
+        stamps: st,
+        stampGoal: cafe.stamp_goal,
+        stampCardReady: st >= cafe.stamp_goal,
+        stampReward: cafe.stamp_reward,
+        beans: await beans(db, c.params.id),
+        rewards: await listRewards(db),
+      };
     }),
 
     // ---- counter stand bridge
-    route('POST', '/v1/stand/events', (c) => {
-      const s = authStand(db, c.req.headers['x-stand-id'] as string, c.req.headers['x-stand-key'] as string);
+    route('POST', '/v1/stand/events', async (c) => {
+      const s = await authStand(db, c.req.headers['x-stand-id'] as string, c.req.headers['x-stand-key'] as string);
       return ingestEvents(db, cfg, s.standId, s.cafeId, c.body?.events);
     }),
 
@@ -200,8 +207,19 @@ export function createApp(db: DB, cfg: Config, sms: SmsSender) {
           throw new HttpError(400, 'bad_json');
         }
       }
-      const principal = authenticate(db, req.headers.authorization);
-      const out = await matched.handler({ req, params, query: url.searchParams, body, rawBody, principal });
+      // One serializable transaction per request (see db.ts): the request either happens whole or not at all, and
+      // concurrent requests behave as if they ran one after another, as they did on SQLite.
+      const handler = matched.handler;
+      // An HttpError still commits what the handler wrote before it (a counted wrong OTP attempt), as on SQLite;
+      // routes that must be all-or-nothing wrap their work in tx(), which undoes it on any error.
+      const out = await tx(
+        db,
+        async () => {
+          const principal = await authenticate(db, req.headers.authorization);
+          return handler({ req, params, query: url.searchParams, body, rawBody, principal });
+        },
+        { commitOn: (e) => e instanceof HttpError },
+      );
       send(res, 200, out);
     } catch (e) {
       if (e instanceof HttpError) return send(res, e.status, { error: e.code, message: e.message });

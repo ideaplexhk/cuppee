@@ -1,0 +1,755 @@
+{
+  "cafe_menu": {
+    "columns": {
+      "id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": true
+      },
+      "cafe_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "name": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "price_hkd": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "pos_item_ref": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      }
+    },
+    "foreignKeys": [
+      "cafe_id->cafes.id"
+    ],
+    "uniques": [],
+    "indexes": [],
+    "checks": []
+  },
+  "cafes": {
+    "columns": {
+      "id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": true
+      },
+      "name": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "name_zh": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "district": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "address": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "lat": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "lng": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "location_confirmed": {
+        "notNull": true,
+        "dflt": "0",
+        "pk": false
+      },
+      "hours": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "description": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "stamp_goal": {
+        "notNull": true,
+        "dflt": "9",
+        "pk": false
+      },
+      "stamp_reward": {
+        "notNull": true,
+        "dflt": "'Free drink'",
+        "pk": false
+      },
+      "beans_per_visit": {
+        "notNull": true,
+        "dflt": "10",
+        "pk": false
+      },
+      "beans_per_10hkd": {
+        "notNull": true,
+        "dflt": "1",
+        "pk": false
+      },
+      "pos_provider": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "pos_location_ref": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "active": {
+        "notNull": true,
+        "dflt": "1",
+        "pk": false
+      }
+    },
+    "foreignKeys": [],
+    "uniques": [],
+    "indexes": [],
+    "checks": []
+  },
+  "cups": {
+    "columns": {
+      "id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": true
+      },
+      "uid": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "tag_type": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "sun_counter": {
+        "notNull": true,
+        "dflt": "-1",
+        "pk": false
+      },
+      "qr_code": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "colourway": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "member_id": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "nickname": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "linked_at": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "created_at": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      }
+    },
+    "foreignKeys": [
+      "member_id->members.id"
+    ],
+    "uniques": [
+      "qr_code",
+      "uid"
+    ],
+    "indexes": [],
+    "checks": [
+      {
+        "column": "tag_type",
+        "values": [
+          "'ntag424'",
+          "'ntag213'"
+        ]
+      }
+    ]
+  },
+  "ledger": {
+    "columns": {
+      "id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": true
+      },
+      "member_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "cafe_id": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "unit": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "delta": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "reason": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "ref_id": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "created_at": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      }
+    },
+    "foreignKeys": [
+      "cafe_id->cafes.id",
+      "member_id->members.id"
+    ],
+    "uniques": [],
+    "indexes": [
+      "member_id,unit,cafe_id"
+    ],
+    "checks": [
+      {
+        "column": "unit",
+        "values": [
+          "'stamp'",
+          "'bean'"
+        ]
+      }
+    ]
+  },
+  "members": {
+    "columns": {
+      "id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": true
+      },
+      "phone": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "display_name": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "preferences": {
+        "notNull": true,
+        "dflt": "'{}'",
+        "pk": false
+      },
+      "created_at": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      }
+    },
+    "foreignKeys": [],
+    "uniques": [
+      "phone"
+    ],
+    "indexes": [],
+    "checks": []
+  },
+  "otp_codes": {
+    "columns": {
+      "phone": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "code_hash": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "expires_at": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "attempts": {
+        "notNull": true,
+        "dflt": "0",
+        "pk": false
+      }
+    },
+    "foreignKeys": [],
+    "uniques": [],
+    "indexes": [
+      "phone"
+    ],
+    "checks": []
+  },
+  "pos_orders": {
+    "columns": {
+      "id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": true
+      },
+      "provider": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "external_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "cafe_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "member_id": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "visit_id": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "total_hkd": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "items": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "ordered_at": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "match_method": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "raw": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      }
+    },
+    "foreignKeys": [
+      "cafe_id->cafes.id",
+      "member_id->members.id",
+      "visit_id->visits.id"
+    ],
+    "uniques": [
+      "provider,external_id"
+    ],
+    "indexes": [],
+    "checks": []
+  },
+  "redemptions": {
+    "columns": {
+      "id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": true
+      },
+      "member_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "cafe_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "kind": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "reward_id": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "staff_id": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "created_at": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      }
+    },
+    "foreignKeys": [
+      "cafe_id->cafes.id",
+      "member_id->members.id",
+      "reward_id->rewards.id",
+      "staff_id->staff.id"
+    ],
+    "uniques": [],
+    "indexes": [],
+    "checks": [
+      {
+        "column": "kind",
+        "values": [
+          "'stamp_card'",
+          "'reward'"
+        ]
+      }
+    ]
+  },
+  "rewards": {
+    "columns": {
+      "id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": true
+      },
+      "title": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "description": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "cost_beans": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "cafe_id": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "active": {
+        "notNull": true,
+        "dflt": "1",
+        "pk": false
+      }
+    },
+    "foreignKeys": [
+      "cafe_id->cafes.id"
+    ],
+    "uniques": [],
+    "indexes": [],
+    "checks": []
+  },
+  "sessions": {
+    "columns": {
+      "token_hash": {
+        "notNull": true,
+        "dflt": null,
+        "pk": true
+      },
+      "kind": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "subject_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "expires_at": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      }
+    },
+    "foreignKeys": [],
+    "uniques": [],
+    "indexes": [],
+    "checks": [
+      {
+        "column": "kind",
+        "values": [
+          "'member'",
+          "'staff'"
+        ]
+      }
+    ]
+  },
+  "staff": {
+    "columns": {
+      "id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": true
+      },
+      "cafe_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "name": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "pin_hash": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "role": {
+        "notNull": true,
+        "dflt": "'barista'",
+        "pk": false
+      }
+    },
+    "foreignKeys": [
+      "cafe_id->cafes.id"
+    ],
+    "uniques": [],
+    "indexes": [],
+    "checks": [
+      {
+        "column": "role",
+        "values": [
+          "'barista'",
+          "'manager'"
+        ]
+      }
+    ]
+  },
+  "stand_events": {
+    "columns": {
+      "id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": true
+      },
+      "client_event_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "stand_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "cafe_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "cup_id": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "uid": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "read_at": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "received_at": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "status": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "reject_reason": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "visit_id": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      }
+    },
+    "foreignKeys": [
+      "cafe_id->cafes.id",
+      "cup_id->cups.id",
+      "stand_id->stands.id"
+    ],
+    "uniques": [
+      "stand_id,client_event_id"
+    ],
+    "indexes": [
+      "cafe_id,status,read_at"
+    ],
+    "checks": [
+      {
+        "column": "status",
+        "values": [
+          "'pending'",
+          "'confirmed'",
+          "'dismissed'",
+          "'duplicate'",
+          "'rejected'",
+          "'unknown_cup'",
+          "'unlinked_cup'"
+        ]
+      }
+    ]
+  },
+  "stands": {
+    "columns": {
+      "id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": true
+      },
+      "cafe_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "label": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "key_hash": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "last_seen_at": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      }
+    },
+    "foreignKeys": [
+      "cafe_id->cafes.id"
+    ],
+    "uniques": [],
+    "indexes": [],
+    "checks": []
+  },
+  "visits": {
+    "columns": {
+      "id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": true
+      },
+      "member_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "cafe_id": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "cup_id": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "source": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      },
+      "staff_id": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "pos_order_id": {
+        "notNull": false,
+        "dflt": null,
+        "pk": false
+      },
+      "created_at": {
+        "notNull": true,
+        "dflt": null,
+        "pk": false
+      }
+    },
+    "foreignKeys": [
+      "cafe_id->cafes.id",
+      "cup_id->cups.id",
+      "member_id->members.id",
+      "staff_id->staff.id"
+    ],
+    "uniques": [],
+    "indexes": [
+      "cafe_id,created_at",
+      "member_id,created_at"
+    ],
+    "checks": [
+      {
+        "column": "source",
+        "values": [
+          "'stand'",
+          "'card_qr'",
+          "'pos'"
+        ]
+      }
+    ]
+  }
+}

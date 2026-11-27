@@ -1,6 +1,5 @@
 // Backlog M1.2: PostgreSQL schema and migrations, tested against a real Postgres.
-// Needs DATABASE_URL (CI provides a Postgres service). Each test run works in its own throwaway schema.
-// In CI a missing DATABASE_URL is a failure, never a silent skip.
+// Needs DATABASE_URL (see test/helpers.ts); without it the tests fail, never skip. Each run uses a throwaway schema.
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
@@ -8,12 +7,10 @@ import { mkdtempSync, writeFileSync, readFileSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import pg from 'pg';
-import { openDb } from '../src/db.ts';
 import { loadMigrations, migrate, MIGRATIONS_DIR } from '../src/migrate.ts';
+import { testDatabaseUrl } from './helpers.ts';
 
-const url = process.env.DATABASE_URL;
-const skip = !url && !process.env.CI ? 'DATABASE_URL not set: Postgres tests need a database' : false;
-if (!url && process.env.CI) throw new Error('DATABASE_URL must be set in CI so the Postgres tests run');
+const url = testDatabaseUrl();
 
 let client: pg.Client;
 let schema: string;
@@ -25,14 +22,12 @@ async function freshSchema() {
 }
 
 before(async () => {
-  if (skip) return;
   client = new pg.Client({ connectionString: url });
   await client.connect();
   await freshSchema();
 });
 
 after(async () => {
-  if (skip) return;
   await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
   await client.end();
 });
@@ -45,7 +40,7 @@ async function columns(table: string) {
   return new Map(r.rows.map((c) => [c.column_name, c]));
 }
 
-test('migrations apply once, and a second run applies nothing', { skip }, async () => {
+test('migrations apply once, and a second run applies nothing', async () => {
   const first = await migrate(client);
   assert.deepEqual(first, loadMigrations().map((m) => m.name));
   assert.ok(first.includes('0001_init.sql'));
@@ -69,22 +64,9 @@ function normDefault(d: string | null): string | null {
   return v;
 }
 
-function liteShape(lite: any, t: string): Shape {
-  const cols = lite.prepare(`PRAGMA table_info(${t})`).all() as { name: string; notnull: number; dflt_value: string | null; pk: number }[];
-  const columns: Shape['columns'] = {};
-  for (const c of cols) columns[c.name] = { notNull: !!c.notnull || c.pk > 0, dflt: normDefault(c.dflt_value), pk: c.pk > 0 };
-  const foreignKeys = (lite.prepare(`PRAGMA foreign_key_list(${t})`).all() as { table: string; from: string; to: string }[])
-    .map((f) => `${f.from}->${f.table}.${f.to}`)
-    .sort();
-  const uniques: string[] = [];
-  const indexes: string[] = [];
-  for (const ix of lite.prepare(`PRAGMA index_list(${t})`).all() as { name: string; unique: number; origin: string }[]) {
-    if (ix.origin === 'pk') continue;
-    const key = (lite.prepare(`PRAGMA index_info(${ix.name})`).all() as { name: string }[]).map((c) => c.name).join(',');
-    (ix.unique ? uniques : indexes).push(key);
-  }
-  return { columns, foreignKeys, uniques: uniques.sort(), indexes: indexes.sort() };
-}
+// The v0.1 SQLite schema (the old src/db.ts), captured as PRAGMA output before SQLite was removed in M1.3.
+type LiteTable = Shape & { checks: { column: string; values: string[] }[] };
+const SQLITE_V01: Record<string, LiteTable> = JSON.parse(readFileSync(new URL('./fixtures/v0.1-sqlite-schema.json', import.meta.url), 'utf8'));
 
 async function pgShape(t: string, skipCols: string[] = []): Promise<Shape> {
   const cols = await client.query<{ column_name: string; is_nullable: string; column_default: string | null }>(
@@ -132,25 +114,21 @@ async function pgShape(t: string, skipCols: string[] = []): Promise<Shape> {
 }
 
 /** Every CHECK in the SQLite table must exist in Postgres on the same column with the same allowed values. */
-async function checksCovered(lite: any, t: string) {
-  const sql = (lite.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(t) as { sql: string }).sql;
-  const liteChecks = [...sql.matchAll(/(\w+)\s+[A-Z][^,]*?CHECK \((\w+) IN \(([^)]*)\)\)/g)].map((m) => ({ col: m[2], values: m[3] }));
+async function checksCovered(t: string) {
   const pgDefs = (
     await client.query<{ def: string }>("SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE contype = 'c' AND conrelid = $1::regclass", [
       `${schema}.${t}`,
     ])
   ).rows.map((r) => r.def);
-  for (const c of liteChecks) {
-    const values = c.values.split(',').map((v) => v.trim());
-    const hit = pgDefs.find((d) => d.includes(c.col) && values.every((v) => d.includes(v)));
-    assert.ok(hit, `${t}: CHECK on ${c.col} IN (${c.values}) is missing in Postgres`);
+  for (const c of SQLITE_V01[t].checks) {
+    const hit = pgDefs.find((d) => d.includes(c.column) && c.values.every((v) => d.includes(v)));
+    assert.ok(hit, `${t}: CHECK on ${c.column} IN (${c.values.join(', ')}) is missing in Postgres`);
   }
-  return liteChecks.length;
+  return SQLITE_V01[t].checks.length;
 }
 
-test('Postgres matches the v0.1 SQLite schema: columns, nullability, defaults, keys, indexes and checks', { skip }, async () => {
-  const lite = openDb(':memory:');
-  const liteTables = (lite.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all() as { name: string }[]).map((t) => t.name);
+test('Postgres matches the v0.1 SQLite schema: columns, nullability, defaults, keys, indexes and checks', async () => {
+  const liteTables = Object.keys(SQLITE_V01).sort();
   const pgTables = (
     await client.query<{ table_name: string }>(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_name <> 'schema_migrations' ORDER BY table_name",
@@ -161,18 +139,18 @@ test('Postgres matches the v0.1 SQLite schema: columns, nullability, defaults, k
   let checks = 0;
   for (const t of liteTables) {
     // Postgres has no rowid, so otp_codes has an explicit id primary key; compare the rest.
-    const want = liteShape(lite, t);
+    const { checks: _, ...want } = SQLITE_V01[t];
     const got = await pgShape(t, t === 'otp_codes' ? ['id'] : []);
     assert.deepEqual(got.columns, want.columns, `columns of ${t}`);
     assert.deepEqual(got.foreignKeys, want.foreignKeys, `foreign keys of ${t}`);
     assert.deepEqual(got.uniques, want.uniques, `unique keys of ${t}`);
     assert.deepEqual(got.indexes, want.indexes, `indexes of ${t}`);
-    checks += await checksCovered(lite, t);
+    checks += await checksCovered(t);
   }
   assert.equal(checks, 7, 'all 7 SQLite CHECK constraints were compared');
 });
 
-test('every café-owned table carries a required cafe_id', { skip }, async () => {
+test('every café-owned table carries a required cafe_id', async () => {
   for (const t of ['cafe_menu', 'staff', 'stands', 'stand_events', 'visits', 'redemptions', 'pos_orders']) {
     const c = (await columns(t)).get('cafe_id');
     assert.ok(c, `${t} has cafe_id`);
@@ -184,7 +162,7 @@ test('every café-owned table carries a required cafe_id', { skip }, async () =>
   assert.equal((await columns('rewards')).get('cafe_id')?.is_nullable, 'YES');
 });
 
-test('a stamp in the ledger must name its café; a bean need not', { skip }, async () => {
+test('a stamp in the ledger must name its café; a bean need not', async () => {
   await client.query("INSERT INTO members (id, phone, created_at) VALUES ('mem_t', '+85290000000', 0)");
   await client.query("INSERT INTO ledger (id, member_id, cafe_id, unit, delta, reason, created_at) VALUES ('led_b', 'mem_t', NULL, 'bean', 10, 'visit', 0)");
   await assert.rejects(
@@ -193,12 +171,12 @@ test('a stamp in the ledger must name its café; a bean need not', { skip }, asy
   );
 });
 
-test('money is exact decimal, never floating point', { skip }, async () => {
+test('money is exact decimal, never floating point', async () => {
   assert.equal((await columns('pos_orders')).get('total_hkd')?.data_type, 'numeric');
   assert.equal((await columns('cafe_menu')).get('price_hkd')?.data_type, 'numeric');
 });
 
-test('an applied migration that was edited afterwards is refused', { skip }, async () => {
+test('an applied migration that was edited afterwards is refused', async () => {
   const dir = copyMigrations({});
   writeFileSync(dir + '0001_init.sql', readFileSync(dir + '0001_init.sql', 'utf8') + '\n-- edited\n');
   await assert.rejects(migrate(client, loadMigrations(dir)), /was changed after it was applied/);
@@ -211,7 +189,7 @@ function copyMigrations(extra: Record<string, string>) {
   return dir + '/';
 }
 
-test('a migration and its record commit together, or not at all', { skip }, async () => {
+test('a migration and its record commit together, or not at all', async () => {
   // The SQL itself succeeds, but recording it fails (the file already claims its own version), so the runner's
   // explicit transaction must undo the table too. Without that transaction the table would survive.
   const dir = copyMigrations({
@@ -224,7 +202,7 @@ test('a migration and its record commit together, or not at all', { skip }, asyn
   assert.equal(v.rowCount, 0, 'failed migration was recorded');
 });
 
-test('the migration lock is released after a failure, and two runners at once apply each file once', { skip }, async () => {
+test('the migration lock is released after a failure, and two runners at once apply each file once', async () => {
   const dir = copyMigrations({ '9997_broken.sql': 'SELECT * FROM no_such_table;' });
   await assert.rejects(migrate(client, loadMigrations(dir)), /9997_broken.sql failed/);
   const other = new pg.Client({ connectionString: url });
