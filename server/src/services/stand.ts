@@ -35,7 +35,9 @@ export async function ingestEvents(db: DB, cfg: Config, standId: string, cafeId:
   const sorted = [...events].sort((a, b) => a.readAt - b.readAt);
 
   for (const e of sorted) {
-    if (!e?.eventId || typeof e.readAt !== 'number') {
+    // readAt is stored as BIGINT epoch ms: a fractional or out-of-range value is answered as invalid, so the stand drops
+    // it instead of the whole batch failing (and jamming the stand's offline queue).
+    if (!e?.eventId || !Number.isSafeInteger(e.readAt) || e.readAt < 0) {
       results.push({ eventId: String(e?.eventId), status: 'invalid' });
       continue;
     }

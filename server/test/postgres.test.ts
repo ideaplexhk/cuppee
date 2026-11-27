@@ -123,6 +123,27 @@ describe('on PostgreSQL', () => {
     }
   });
 
+  test('a stand read with a fractional time is answered invalid, and the rest of its batch is saved', async () => {
+    const r = await s.call('POST', '/v1/stand/events', {
+      headers: s.standHeaders,
+      body: { events: [{ eventId: 'frac-ok', readAt: Date.now() - 1000, uid: '04A1B2C3D4E5F6' }, { eventId: 'frac-bad', readAt: Date.now() + 0.5, uid: '04A1B2C3D4E5F6' }] },
+    });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    const by = Object.fromEntries(r.data.results.map((x: any) => [x.eventId, x.status]));
+    assert.equal(by['frac-bad'], 'invalid');
+    assert.notEqual(by['frac-ok'], 'invalid');
+    assert.equal((await s.db.one("SELECT COUNT(*) AS n FROM stand_events WHERE client_event_id = 'frac-ok'"))!.n, 1);
+  });
+
+  test('a POS order with a fractional created_at is stored, not a server error', async () => {
+    const { createHmac } = await import('node:crypto');
+    const raw = JSON.stringify({ orders: [{ id: 'frac-1', location_id: 'loc-a', created_at: Date.now() + 0.7, total: 38, items: [{ name: 'Latte', qty: 1, price: 38 }] }] });
+    const sig = 'sha256=' + createHmac('sha256', s.cfg.posSecrets.generic).update(raw).digest('hex');
+    const r = await s.call('POST', '/v1/pos/generic/webhook', { raw, headers: { 'x-cuppee-signature': sig } });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    assert.ok(Number.isInteger((await s.db.one("SELECT ordered_at FROM pos_orders WHERE external_id = 'frac-1'"))!.ordered_at));
+  });
+
   test('times, counts and money come back as numbers, as they did on SQLite', async () => {
     const m = await memberWithVisits('95550008', 1);
     const me = await s.call('GET', '/v1/me', { token: m.token });

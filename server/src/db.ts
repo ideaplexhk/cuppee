@@ -104,7 +104,14 @@ export class DB {
       client.release(broken);
     }
     // Committed.
-    for (const f of t.afterCommit) f();
+    // The work is saved: a failing hook is logged, never turned into an error for a request that succeeded.
+    for (const f of t.afterCommit) {
+      try {
+        f();
+      } catch (e) {
+        console.error('[db] after-commit work failed:', (e as Error).message);
+      }
+    }
     if ('error' in result) throw result.error;
     return result.value;
   }
