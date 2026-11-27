@@ -1,3 +1,4 @@
+import type { ColorValue } from 'react-native';
 import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../src/session';
@@ -6,7 +7,7 @@ import { colors } from '../../src/theme';
 export default function TabsLayout() {
   const { ready, memberToken } = useSession();
   if (ready && !memberToken) return <Redirect href="/sign-in" />;
-  const icon = (name: keyof typeof Ionicons.glyphMap) => ({ color, size }: { color: string; size: number }) => <Ionicons name={name} color={color} size={size} />;
+  const icon = (name: keyof typeof Ionicons.glyphMap) => ({ color, size }: { color: ColorValue; size: number }) => <Ionicons name={name} color={typeof color === 'string' ? color : undefined} size={size} />;
   return (
     <Tabs
       screenOptions={{

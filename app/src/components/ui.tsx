@@ -1,9 +1,9 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radius, space, type } from '../theme';
 
-export function Screen({ children, scroll = true, style }: { children: React.ReactNode; scroll?: boolean; style?: ViewStyle }) {
+export function Screen({ children, scroll = true, style }: { children: React.ReactNode; scroll?: boolean; style?: StyleProp<ViewStyle> }) {
   const inner = <View style={[styles.inner, style]}>{children}</View>;
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -16,7 +16,7 @@ export function Title({ children }: { children: React.ReactNode }) {
   return <Text style={[type.title, { marginBottom: space(4) }]}>{children}</Text>;
 }
 
-export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+export function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
@@ -33,7 +33,7 @@ export function Button({
   kind?: 'primary' | 'secondary' | 'accent' | 'ghost';
   busy?: boolean;
   disabled?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }) {
   const bg = { primary: colors.green, secondary: colors.creamDeep, accent: colors.orange, ghost: 'transparent' }[kind];
   const fg = kind === 'secondary' || kind === 'ghost' ? colors.green : colors.white;
