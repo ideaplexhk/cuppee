@@ -14,14 +14,19 @@ export const MIGRATIONS_DIR = fileURLToPath(new URL('../migrations/', import.met
 
 export type Migration = { version: string; name: string; sql: string; checksum: string };
 
+/** Reads NNNN_name.sql files in order. A badly named .sql file or two files with one version number is an error. */
 export function loadMigrations(dir = MIGRATIONS_DIR): Migration[] {
-  return readdirSync(dir)
-    .filter((f) => /^\d{4}_[a-z0-9_]+\.sql$/.test(f))
-    .sort()
-    .map((f) => {
-      const sql = readFileSync(dir + f, 'utf8');
-      return { version: f.slice(0, 4), name: f, sql, checksum: createHash('sha256').update(sql).digest('hex') };
-    });
+  const sqlFiles = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+  const bad = sqlFiles.filter((f) => !/^\d{4}_[a-z0-9_]+\.sql$/.test(f));
+  if (bad.length) throw new Error(`Badly named migration file(s): ${bad.join(', ')}. Use NNNN_lower_case_name.sql`);
+  const seen = new Map<string, string>();
+  return sqlFiles.map((f) => {
+    const version = f.slice(0, 4);
+    if (seen.has(version)) throw new Error(`Two migrations share version ${version}: ${seen.get(version)} and ${f}`);
+    seen.set(version, f);
+    const sql = readFileSync(dir + f, 'utf8');
+    return { version, name: f, sql, checksum: createHash('sha256').update(sql).digest('hex') };
+  });
 }
 
 /** Applies pending migrations. Returns the file names applied this time. */
@@ -51,14 +56,16 @@ export async function migrate(client: pg.Client | pg.PoolClient, migrations = lo
         await client.query('INSERT INTO schema_migrations (version, name, checksum) VALUES ($1, $2, $3)', [m.version, m.name, m.checksum]);
         await client.query('COMMIT');
       } catch (e) {
-        await client.query('ROLLBACK');
+        // Keep the migration's own error even if the rollback fails too (e.g. the connection dropped).
+        await client.query('ROLLBACK').catch(() => {});
         throw new Error(`Migration ${m.name} failed: ${(e as Error).message}`);
       }
       applied.push(m.name);
     }
     return applied;
   } finally {
-    await client.query('SELECT pg_advisory_unlock(727001)');
+    // Never let a failed unlock hide the real error; a dropped connection releases the lock anyway.
+    await client.query('SELECT pg_advisory_unlock(727001)').catch(() => {});
   }
 }
 
