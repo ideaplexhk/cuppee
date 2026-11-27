@@ -6,6 +6,10 @@ import { genericAdapter } from './generic.ts';
 import { verifyCardCode } from '../services/card.ts';
 import { awardSpend, recordVisit } from '../services/loyalty.ts';
 import { HttpError, id, normalisePhone, now } from '../lib/util.ts';
+import * as orders from '../data/pos.ts';
+import { cafeIdByPosLocation, hasRefundFor, insertRefundBeans, spendBeansFor } from '../data/loyalty.ts';
+import { memberIdById, memberIdByPhone, memberPreferencesJson, setMemberPreferencesJson } from '../data/identity.ts';
+import { latestMemberReadAtCafe } from '../data/stand.ts';
 
 // Register new POS adapters here.
 export const adapters: Record<string, PosAdapter> = {
@@ -29,12 +33,12 @@ function memberFromRef(db: DB, cfg: Config, ref: string): string | null {
   const viaCard = verifyCardCode(cfg.cardSecret, ref);
   if (viaCard) return viaCard;
   if (/^mem_[A-Za-z0-9_\-]+$/.test(ref)) {
-    const m = db.prepare('SELECT id FROM members WHERE id = ?').get(ref) as { id: string } | undefined;
+    const m = memberIdById(db, ref);
     if (m) return m.id;
   }
   const phone = normalisePhone(ref);
   if (phone) {
-    const m = db.prepare('SELECT id FROM members WHERE phone = ?').get(phone) as { id: string } | undefined;
+    const m = memberIdByPhone(db, phone);
     if (m) return m.id;
   }
   return null;
@@ -47,13 +51,11 @@ function memberFromRef(db: DB, cfg: Config, ref: string): string | null {
  * Two or more candidate visits = ambiguous, left unmatched rather than guessed.
  */
 export function ingestOrder(db: DB, cfg: Config, provider: string, o: NormalizedOrder, raw?: string) {
-  const cafe = db.prepare('SELECT id FROM cafes WHERE pos_provider = ? AND pos_location_ref = ?').get(provider, o.locationRef) as { id: string } | undefined;
+  const cafe = cafeIdByPosLocation(db, provider, o.locationRef);
   if (!cafe) return { externalId: o.externalId, status: 'unknown_location' };
 
   return tx(db, () => {
-    const existing = db.prepare('SELECT id, member_id FROM pos_orders WHERE provider = ? AND external_id = ?').get(provider, o.externalId) as
-      | { id: string; member_id: string | null }
-      | undefined;
+    const existing = orders.orderByExternalId(db, provider, o.externalId);
     if (existing) {
       if (o.status !== 'paid') reverseSpend(db, existing.id, existing.member_id);
       return { externalId: o.externalId, status: o.status === 'paid' ? 'duplicate' : 'reversed', orderId: existing.id };
@@ -67,18 +69,7 @@ export function ingestOrder(db: DB, cfg: Config, provider: string, o: Normalized
       memberId = memberFromRef(db, cfg, o.memberRef);
       if (memberId) method = 'member_ref';
     }
-    const candidates = db
-      .prepare(
-        `SELECT v.id, v.member_id FROM visits v
-         WHERE v.cafe_id = ? AND v.created_at BETWEEN ? AND ?
-           AND NOT EXISTS (SELECT 1 FROM pos_orders p WHERE p.visit_id = v.id)
-           ${memberId ? 'AND v.member_id = ?' : ''}
-         ORDER BY ABS(v.created_at - ?) LIMIT 2`,
-      )
-      .all(...([cafe.id, o.orderedAt - cfg.posMatchWindowMs, o.orderedAt + cfg.posMatchWindowMs, ...(memberId ? [memberId] : []), o.orderedAt] as any[])) as {
-      id: string;
-      member_id: string;
-    }[];
+    const candidates = orders.unmatchedVisitsNear(db, cafe.id, o.orderedAt - cfg.posMatchWindowMs, o.orderedAt + cfg.posMatchWindowMs, o.orderedAt, memberId);
     if (memberId) {
       visitId = candidates[0]?.id ?? null;
     } else if (candidates.length === 1) {
@@ -88,9 +79,19 @@ export function ingestOrder(db: DB, cfg: Config, provider: string, o: Normalized
     }
 
     const orderId = id('ord');
-    db.prepare(
-      'INSERT INTO pos_orders (id, provider, external_id, cafe_id, member_id, visit_id, total_hkd, items, ordered_at, match_method, raw) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    ).run(orderId, provider, o.externalId, cafe.id, memberId, visitId, o.totalHkd, JSON.stringify(o.items), o.orderedAt, method, raw ?? null);
+    orders.insertOrder(db, {
+      id: orderId,
+      provider,
+      externalId: o.externalId,
+      cafeId: cafe.id,
+      memberId,
+      visitId,
+      totalHkd: o.totalHkd,
+      itemsJson: JSON.stringify(o.items),
+      orderedAt: o.orderedAt,
+      matchMethod: method,
+      raw: raw ?? null,
+    });
 
     let beansAwarded = 0;
     if (memberId) {
@@ -98,7 +99,7 @@ export function ingestOrder(db: DB, cfg: Config, provider: string, o: Normalized
       if (!visitId) {
         const v = recordVisit(db, cfg, { memberId, cafeId: cafe.id, source: 'pos', posOrderId: orderId });
         visitId = v.visitId;
-        db.prepare('UPDATE pos_orders SET visit_id = ? WHERE id = ?').run(visitId, orderId);
+        orders.setOrderVisit(db, orderId, visitId);
       }
       beansAwarded = awardSpend(db, memberId, cafe.id, o.totalHkd, orderId);
       rememberUsualDrink(db, memberId, o);
@@ -109,23 +110,18 @@ export function ingestOrder(db: DB, cfg: Config, provider: string, o: Normalized
 
 function reverseSpend(db: DB, orderId: string, memberId: string | null) {
   if (!memberId) return;
-  const already = db.prepare("SELECT 1 FROM ledger WHERE ref_id = ? AND reason = 'refund'").get(orderId);
-  if (already) return;
-  const earned = db.prepare("SELECT COALESCE(SUM(delta),0) AS n FROM ledger WHERE ref_id = ? AND reason = 'spend'").get(orderId) as { n: number };
-  if (earned.n > 0) {
-    db.prepare("INSERT INTO ledger (id, member_id, cafe_id, unit, delta, reason, ref_id, created_at) VALUES (?, ?, NULL, 'bean', ?, 'refund', ?, ?)")
-      .run(id('led'), memberId, -earned.n, orderId, now());
-  }
+  if (hasRefundFor(db, orderId)) return;
+  const earned = spendBeansFor(db, orderId);
+  if (earned > 0) insertRefundBeans(db, id('led'), memberId, -earned, orderId, now());
 }
 
 /** Keep the member's most recent drink so the barista sees "usual: oat flat white" on the tablet. */
 function rememberUsualDrink(db: DB, memberId: string, o: NormalizedOrder) {
   const drink = o.items[0];
   if (!drink?.name) return;
-  const row = db.prepare('SELECT preferences FROM members WHERE id = ?').get(memberId) as { preferences: string };
-  const prefs = JSON.parse(row.preferences || '{}');
+  const prefs = JSON.parse(memberPreferencesJson(db, memberId) || '{}');
   prefs.lastOrder = { name: drink.name, modifiers: drink.modifiers ?? [], at: o.orderedAt };
-  db.prepare('UPDATE members SET preferences = ? WHERE id = ?').run(JSON.stringify(prefs), memberId);
+  setMemberPreferencesJson(db, memberId, JSON.stringify(prefs));
 }
 
 /**
@@ -134,15 +130,8 @@ function rememberUsualDrink(db: DB, memberId: string, o: NormalizedOrder) {
  * member_ref to the order it is ringing up.
  */
 export function counterMember(db: DB, provider: string, locationRef: string) {
-  const cafe = db.prepare('SELECT id FROM cafes WHERE pos_provider = ? AND pos_location_ref = ?').get(provider, locationRef) as { id: string } | undefined;
+  const cafe = cafeIdByPosLocation(db, provider, locationRef);
   if (!cafe) throw new HttpError(404, 'unknown_location');
-  const r = db
-    .prepare(
-      `SELECT se.id AS standEventId, se.status, se.read_at AS readAt, m.id AS memberId, m.display_name AS name
-       FROM stand_events se JOIN cups cu ON cu.id = se.cup_id JOIN members m ON m.id = cu.member_id
-       WHERE se.cafe_id = ? AND se.status IN ('pending','confirmed') AND se.read_at > ?
-       ORDER BY se.read_at DESC LIMIT 1`,
-    )
-    .get(cafe.id, now() - 5 * 60_000);
+  const r = latestMemberReadAtCafe(db, cafe.id, now() - 5 * 60_000);
   return { member: r ?? null };
 }

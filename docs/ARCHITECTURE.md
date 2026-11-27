@@ -22,6 +22,13 @@
 | `app/` | Expo (SDK 58) app. Member tabs: Card, Rewards, Cafés, Me. Staff mode for the counter tablet. | iOS / Android (dev build for NFC) |
 | `stand-bridge/` | Reads the cup on the counter stand and posts events, queueing up to 100 when offline. | PC / mini PC / Raspberry Pi with the reader |
 
+## Data layer (backlog M1.1)
+
+All SQL lives in `server/src/data/`, one module per area: `identity` (OTP, sessions, members, staff), `cups`,
+`loyalty` (cafés, menus, visits, ledger, rewards), `stand`, `pos` and `catalogue` (seed and set-up). Services,
+routes and the seed script call these functions and never run SQL themselves; `server/test/data-layer.test.ts`
+fails if they do. This is the seam for the move to PostgreSQL (M1.2, M1.3).
+
 ## Identity: how a cup proves it's real
 
 - **Phase 1 cups (NTAG 424 DNA).** The chip serves a URL with a fresh encrypted UID + counter and a CMAC on every
