@@ -17,8 +17,8 @@ decision is needed.
 ## Every run
 
 1. **Sync.** `git fetch` and start a branch from the latest `main`: `agent/<task-id>-<short-slug>`.
-   If a previous agent PR is still open and unreviewed, do not stack more than 3 open agent PRs: work on answering
-   review comments on those first.
+   If 3 or more agent PRs are open (ones that could not be merged), do not start a new task: work on what is blocking
+   them first.
 2. **Pick one task.** The first `todo` task in `docs/BACKLOG.md` whose `Blocked by` questions are all answered.
    Mark it `doing` in the backlog on your branch.
 3. **Check for product calls.** Before writing code, list the decisions the task needs. For each one, check
@@ -35,9 +35,14 @@ decision is needed.
      branch name and the paths to DIRECTION and BACKLOG, not your own reasoning, so it judges the work fresh. Fix
      everything it marks as required and re-run it. After 3 rounds without a PASS, open the PR as a draft and list
      what is still failing.
-6. **Ship.** Push the branch and open a PR using `.github/pull_request_template.md`. Never push to `main`, never
-   merge your own PR, never force-push a branch someone else has commented on.
-7. **Report.** Write `docs/runs/YYYY-MM-DD-<task-id>.md` (template in `docs/runs/README.md`) on the branch, and end
+6. **Ship.** Push the branch and open a PR using `.github/pull_request_template.md`. Never push to `main` directly and
+   never force-push a branch someone else has commented on.
+7. **Merge (owner decision 2026-11-28).** Merge your own PR (squash) only when all of these hold: CI `verify` is green
+   on the PR's current head, the reviewer's latest verdict is `PASS`, the PR is not a draft, it has no merge
+   conflict, and no human has left an unresolved comment or requested changes. Then mark the task `done` in the
+   backlog (in the next branch). If any condition fails, leave the PR open for the owner. The owner reviews merged
+   work after the fact and can revert.
+8. **Report.** Write `docs/runs/YYYY-MM-DD-<task-id>.md` (template in `docs/runs/README.md`) on the branch, and end
    the run with a short message to the owner: what shipped, the PR link, the reviewer verdict, and any new questions,
    each with your recommended answer.
 

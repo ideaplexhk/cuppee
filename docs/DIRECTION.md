@@ -56,7 +56,9 @@ Exact numbers (expiry time, no-show limit) are open questions.
 | 2026-11-28 | Counter stand: support both a reader plugged straight into the Android tablet and the separate stand bridge. |
 | 2026-11-28 | Target both Android tablets and iPads from the start. |
 | 2026-11-28 | Languages: English and Traditional Chinese (Hong Kong), switchable. |
-| 2026-11-28 | Agent works in a GitHub repo through pull requests, runs nightly (HK time) and on demand, decides code details itself and asks on product calls. |
+| 2026-11-28 | Agent works in a GitHub repo through pull requests, decides code details itself and asks on product calls. |
+| 2026-11-28 | The agent merges its own PRs when CI is green and the reviewer says PASS (see CLAUDE.md step 7); the owner reviews after the fact. Product calls still go to the owner. |
+| 2026-11-28 | Runs back-to-back overnight: hourly from 23:00 to 07:00 HK time, plus on demand. |
 | 2026-11-28 | Self-proof: automated tests and type checks, screenshots of changed screens, and an independent reviewer agent on every PR. |
 
 ## Rollout (from the blueprint)
