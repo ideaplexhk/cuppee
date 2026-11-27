@@ -29,15 +29,20 @@ step "server: typecheck"
 step "server: tests"
 (cd server && npm test); ran+=("server tests")
 
+step "stand-bridge: install (without building the native PC/SC module)"
+if [[ ! -d stand-bridge/node_modules ]]; then
+  if [[ -f stand-bridge/package-lock.json ]]; then (cd stand-bridge && npm ci --ignore-scripts); else (cd stand-bridge && npm install --ignore-scripts); fi
+fi
+step "stand-bridge: typecheck"
+(cd stand-bridge && npm run typecheck); ran+=("stand-bridge typecheck")
 step "stand-bridge: tests"
-# The bridge's tests do not need the native PC/SC module; skip install if it cannot build here.
 (cd stand-bridge && npm test); ran+=("stand-bridge tests")
 
 step "app: install"
 install_if_needed app
 step "app: typecheck"
 (cd app && npm run typecheck); ran+=("app typecheck")
-if (cd app && npm run | grep -q " test$"); then
+if [[ "$(cd app && npm pkg get scripts.test)" != "{}" ]]; then
   step "app: tests"
   (cd app && npm test); ran+=("app tests")
 else

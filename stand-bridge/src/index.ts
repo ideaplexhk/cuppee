@@ -1,7 +1,7 @@
 // CUPPEE counter stand bridge. Runs on the laptop / mini PC / Raspberry Pi the ACR122U is plugged into.
 // Every cup landing → one read event → posted to the API (queued on disk if the network is down).
 
-import { NFC } from 'nfc-pcsc';
+import { NFC, type Reader } from 'nfc-pcsc';
 import { EventQueue, flush } from './queue.ts';
 import { readSunUrl, sunParams } from './tag.ts';
 
@@ -48,7 +48,7 @@ async function tryFlush() {
 setInterval(tryFlush, 5000);
 
 const nfc = new NFC();
-nfc.on('reader', (reader: any) => {
+nfc.on('reader', (reader: Reader) => {
   console.log(`reader ready: ${reader.reader.name}`);
   reader.autoProcessing = false; // we talk APDUs ourselves (needed for NTAG 424)
 
