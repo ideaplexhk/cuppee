@@ -29,6 +29,12 @@ All SQL lives in `server/src/data/`, one module per area: `identity` (OTP, sessi
 routes and the seed script call these functions and never run SQL themselves; `server/test/data-layer.test.ts`
 fails if they do. This is the seam for the move to PostgreSQL (M1.2, M1.3).
 
+PostgreSQL schema (M1.2): `server/migrations/NNNN_name.sql`, applied in order by `server/src/migrate.ts`
+(`DATABASE_URL=... node src/migrate.ts`). Each file runs in its own transaction and is recorded with a checksum in
+`schema_migrations`; an applied file that is later edited is refused, so changes always go in a new file.
+`0001_init.sql` matches the SQLite tables, with money as `NUMERIC(10,2)` and an `id` on `otp_codes`. The server
+still runs on SQLite until the port (M1.3).
+
 ## Identity: how a cup proves it's real
 
 - **Phase 1 cups (NTAG 424 DNA).** The chip serves a URL with a fresh encrypted UID + counter and a CMAC on every

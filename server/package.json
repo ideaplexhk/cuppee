@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "CUPPEE membership API: members, cups, stamps/beans, counter stand, POS adapters. Zero runtime dependencies (Node 22.18+ built-in SQLite, crypto, TypeScript stripping).",
+  "description": "CUPPEE membership API: members, cups, stamps/beans, counter stand, POS adapters. One runtime dependency, the pg driver (backlog M1); otherwise Node 22.18+ built-ins (SQLite until the port, crypto, TypeScript stripping).",
   "engines": {
     "node": ">=22.18"
   },
@@ -16,6 +16,10 @@
   },
   "devDependencies": {
     "@types/node": "^22",
+    "@types/pg": "^8.23.1",
     "typescript": "^6"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
   }
 }
