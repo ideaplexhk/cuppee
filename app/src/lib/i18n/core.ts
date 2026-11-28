@@ -48,6 +48,16 @@ export const setLang = (lang: Lang) => {
 };
 export const tNow = (key: MessageKey, vars?: Vars) => translate(current, key, vars);
 
+/**
+ * Text for an API error: the translation of `error.<code>` when there is one, otherwise the server's own
+ * message (a code the app does not expect), otherwise the generic error.
+ */
+export function errorText(code: string | null | undefined, serverMessage?: string | null, lang: Lang = current): string {
+  const key = `error.${code}`;
+  if (code && key in en) return translate(lang, key as MessageKey);
+  return serverMessage || translate(lang, 'error.generic');
+}
+
 /** The device language from Intl (Hermes, browsers and Node all have it). */
 export function deviceLang(): string | null {
   try {

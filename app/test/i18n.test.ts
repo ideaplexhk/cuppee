@@ -7,7 +7,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { en } from '../src/lib/i18n/en';
 import { zhHK } from '../src/lib/i18n/zh-HK';
-import { LANGS, MESSAGES, dateLocale, getLang, initialLang, normaliseLang, setLang, translate, tNow } from '../src/lib/i18n/core';
+import { LANGS, MESSAGES, dateLocale, errorText, getLang, initialLang, normaliseLang, setLang, translate, tNow } from '../src/lib/i18n/core';
 
 const placeholders = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 const APP = join(import.meta.dirname, '..');
@@ -142,4 +142,33 @@ test('no English text is hard-coded in screens or components', () => {
     });
   }
   assert.deepEqual(found, []);
+});
+
+// Codes thrown on routes the app never calls (stand bridge, POS webhooks, transport errors). Their text is
+// for developers and machines, so they need no translation. Any other code must have an `error.<code>` key.
+const MACHINE_ONLY = [
+  'stand_auth', 'no_events', 'too_many_events', 'bad_key', 'body_too_large', 'method_not_allowed', 'bad_json',
+  'unknown_provider', 'bad_signature', 'bad_payload', 'unknown_location',
+];
+
+test('every error code the server can send to the app has a translation', () => {
+  const server = join(APP, '..', 'server', 'src');
+  const codes = new Set<string>();
+  for (const file of sourceFiles(server)) {
+    const src = readFileSync(file, 'utf8');
+    for (const m of src.matchAll(/HttpError\(\s*[^,]+,\s*'(\w+)'/g)) codes.add(m[1]);
+    // Cup tap checks return a reason that the link-a-cup route sends on as the error code.
+    for (const m of src.matchAll(/\breason:\s*'(\w+)'/g)) codes.add(m[1]);
+  }
+  assert.ok(codes.size > 20, `expected to find the server's error codes, found ${codes.size}`);
+  const missing = [...codes].filter((c) => !MACHINE_ONLY.includes(c) && !(`error.${c}` in en)).sort();
+  assert.deepEqual(missing, [], 'add these as error.<code> to en.ts and zh-HK.ts, or to MACHINE_ONLY if the app never sees them');
+});
+
+test('errorText translates a known code, and falls back to the server text, then the generic error', () => {
+  assert.equal(errorText('wrong_pin', 'Wrong staff PIN', 'zh-HK'), zhHK['error.wrong_pin']);
+  assert.equal(errorText('wrong_pin', 'Wrong staff PIN', 'en'), en['error.wrong_pin']);
+  assert.equal(errorText('something_new', 'Server says so', 'zh-HK'), 'Server says so');
+  assert.equal(errorText(undefined, null, 'zh-HK'), zhHK['error.generic']);
+  assert.equal(errorText('generic', null, 'en'), en['error.generic']);
 });

@@ -233,7 +233,7 @@ export default function StaffHome() {
                   ? t('staff.unlinkedHint')
                   : e.status === 'unknown_cup'
                     ? t('staff.unknownHint', { uid: e.uid ?? '?' })
-                    : t('staff.failedHint', { reason: e.rejectReason ?? '?' })}{' '}
+                    : t('staff.failedHint', { code: e.rejectReason ?? '?' })}{' '}
                 · {ago(t, e.readAt, now)}
               </Text>
             </View>
