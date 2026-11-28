@@ -5,11 +5,13 @@ import { api, type Cafe } from '../../src/api';
 import { useSession } from '../../src/session';
 import { Button, Card, ErrorText, Screen, Title } from '../../src/components/ui';
 import { colors, radius, space, type } from '../../src/theme';
+import { LanguageSwitch, useT } from '../../src/i18n';
 
 type StaffItem = { id: string; name: string };
 
 export default function StaffLogin() {
   const { setStaff } = useSession();
+  const { t } = useT();
   const [cafes, setCafes] = useState<Cafe[]>([]);
   const [cafe, setCafe] = useState<Cafe | null>(null);
   const [people, setPeople] = useState<StaffItem[]>([]);
@@ -52,10 +54,10 @@ export default function StaffLogin() {
 
   return (
     <Screen>
-      <Title>Staff mode</Title>
+      <Title>{t('staffLogin.title')}</Title>
       {!cafe ? (
         <>
-          <Text style={[type.body, { marginBottom: space(3) }]}>Which café is this tablet at?</Text>
+          <Text style={[type.body, { marginBottom: space(3) }]}>{t('staffLogin.whichCafe')}</Text>
           {cafes.map((c) => (
             <Pressable key={c.id} onPress={() => setCafe(c)}>
               <Card>
@@ -66,7 +68,7 @@ export default function StaffLogin() {
         </>
       ) : !person ? (
         <>
-          <Text style={[type.body, { marginBottom: space(3) }]}>{cafe.name}: who’s on shift?</Text>
+          <Text style={[type.body, { marginBottom: space(3) }]}>{t('staffLogin.whoOnShift', { cafe: cafe.name })}</Text>
           {people.map((p) => (
             <Pressable key={p.id} onPress={() => setPerson(p)}>
               <Card>
@@ -74,11 +76,11 @@ export default function StaffLogin() {
               </Card>
             </Pressable>
           ))}
-          <Button title="Back" kind="ghost" onPress={() => setCafe(null)} />
+          <Button title={t('common.back')} kind="ghost" onPress={() => setCafe(null)} />
         </>
       ) : (
         <View style={{ alignItems: 'center' }}>
-          <Text style={[type.body, { marginBottom: space(3) }]}>{person.name}, enter your PIN</Text>
+          <Text style={[type.body, { marginBottom: space(3) }]}>{t('staffLogin.enterPin', { name: person.name })}</Text>
           <View style={{ flexDirection: 'row', marginBottom: space(5) }}>
             {[0, 1, 2, 3].map((i) => (
               <View key={i} style={[styles.dot, i < pin.length && { backgroundColor: colors.green }]} />
@@ -91,11 +93,12 @@ export default function StaffLogin() {
               </Pressable>
             ))}
           </View>
-          <Button title="Back" kind="ghost" onPress={() => (setPerson(null), setPin(''))} />
+          <Button title={t('common.back')} kind="ghost" onPress={() => (setPerson(null), setPin(''))} />
         </View>
       )}
       <ErrorText error={error} />
-      <Button title="Exit staff mode" kind="ghost" onPress={() => router.replace('/')} />
+      <LanguageSwitch />
+      <Button title={t('staffLogin.exit')} kind="ghost" onPress={() => router.replace('/')} />
     </Screen>
   );
 }

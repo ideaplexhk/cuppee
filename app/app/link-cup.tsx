@@ -7,10 +7,12 @@ import { nfcAvailable, readCup, type CupTap } from '../src/lib/nfc';
 import { QrScanner } from '../src/components/QrScanner';
 import { Button, Card, ErrorText, Screen, Title } from '../src/components/ui';
 import { colors, radius, space, type } from '../src/theme';
+import { useT } from '../src/i18n';
 
 export default function LinkCup() {
   const { welcome } = useLocalSearchParams<{ welcome?: string }>();
   const { memberToken } = useSession();
+  const { t } = useT();
   const [hasNfc, setHasNfc] = useState(false);
   const [scan, setScan] = useState(false);
   const [nickname, setNickname] = useState('');
@@ -27,7 +29,7 @@ export default function LinkCup() {
     setError(null);
     try {
       const cup = await api<{ colourway: string | null; nickname: string | null }>('/v1/me/cups', { token: memberToken, body: { ...body, nickname } });
-      setLinked(cup.nickname ?? cup.colourway ?? 'Your cup');
+      setLinked(cup.nickname ?? cup.colourway ?? t('link.yourCup'));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -49,49 +51,49 @@ export default function LinkCup() {
   if (linked) {
     return (
       <Screen style={{ justifyContent: 'center' }}>
-        <Title>Cup linked</Title>
+        <Title>{t('link.doneTitle')}</Title>
         <Text style={[type.body, { marginBottom: space(6) }]}>
-          {linked} is now your membership. Next time, put it on the CUPPEE stand at the counter and the barista will see it’s you.
+          {t('link.doneBody', { cup: linked })}
         </Text>
-        <Button title="Done" onPress={done} />
+        <Button title={t('common.done')} onPress={done} />
       </Screen>
     );
   }
 
   return (
     <Screen>
-      <Title>{welcome ? 'Welcome to CUPPEE' : 'Link a cup'}</Title>
-      <Text style={[type.body, { marginBottom: space(4) }]}>Your cup has a chip in its base. Link it once and it works at every partner café.</Text>
+      <Title>{welcome ? t('link.welcome') : t('link.title')}</Title>
+      <Text style={[type.body, { marginBottom: space(4) }]}>{t('link.intro')}</Text>
 
-      <Text style={type.small}>Name this cup (optional)</Text>
+      <Text style={type.small}>{t('link.nameLabel')}</Text>
       <TextInput
         value={nickname}
         onChangeText={setNickname}
-        placeholder="e.g. Daily cup"
+        placeholder={t('link.namePlaceholder')}
         style={{ backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, padding: space(3.5), fontSize: 16, marginVertical: space(2) }}
       />
 
       {hasNfc ? (
         <Card style={{ alignItems: 'center' }}>
-          <Text style={[type.h2, { marginBottom: space(2) }]}>Tap your cup</Text>
-          <Text style={[type.small, { textAlign: 'center', marginBottom: space(3) }]}>Hold the base of the cup against the top of your phone.</Text>
-          <Button title="Start tap" kind="accent" onPress={tap} busy={busy} style={{ alignSelf: 'stretch' }} />
+          <Text style={[type.h2, { marginBottom: space(2) }]}>{t('link.tapTitle')}</Text>
+          <Text style={[type.small, { textAlign: 'center', marginBottom: space(3) }]}>{t('link.tapHint')}</Text>
+          <Button title={t('link.startTap')} kind="accent" onPress={tap} busy={busy} style={{ alignSelf: 'stretch' }} />
         </Card>
       ) : null}
 
       <Card style={{ alignItems: 'center' }}>
-        <Text style={[type.h2, { marginBottom: space(2) }]}>{hasNfc ? 'Or scan the code' : 'Scan the code on the base'}</Text>
-        <Text style={[type.small, { textAlign: 'center', marginBottom: space(3) }]}>The small QR next to the chip on the underside of the cup.</Text>
-        <Button title="Scan QR" kind={hasNfc ? 'secondary' : 'accent'} onPress={() => setScan(true)} busy={busy && !hasNfc} style={{ alignSelf: 'stretch' }} />
+        <Text style={[type.h2, { marginBottom: space(2) }]}>{hasNfc ? t('link.orScan') : t('link.scanBase')}</Text>
+        <Text style={[type.small, { textAlign: 'center', marginBottom: space(3) }]}>{t('link.scanHint')}</Text>
+        <Button title={t('link.scanQr')} kind={hasNfc ? 'secondary' : 'accent'} onPress={() => setScan(true)} busy={busy && !hasNfc} style={{ alignSelf: 'stretch' }} />
       </Card>
 
       <ErrorText error={error} />
       <View style={{ flex: 1 }} />
-      <Button title={welcome ? 'I’ll do this later' : 'Cancel'} kind="ghost" onPress={done} />
+      <Button title={welcome ? t('link.later') : t('common.cancel')} kind="ghost" onPress={done} />
 
       <QrScanner
         visible={scan}
-        title="Scan the code on your cup"
+        title={t('link.scannerTitle')}
         onClose={() => setScan(false)}
         onScan={(data) => {
           setScan(false);

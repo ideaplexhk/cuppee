@@ -8,10 +8,12 @@ import { useMemberQuery } from '../../src/lib/useApi';
 import { cardCode, msUntilNext } from '../../src/lib/card';
 import { Button, Card, ErrorText, StampRow } from '../../src/components/ui';
 import { colors, space, type } from '../../src/theme';
+import { useT } from '../../src/i18n';
 
 type CardKey = { memberId: string; cardKey: string; windowMs: number; serverTime: number };
 
 export default function CardScreen() {
+  const { t, lang, date } = useT();
   const summary = useMemberQuery<Summary>('/v1/me');
   const card = useMemberQuery<CardKey>('/v1/me/card');
   const cups = useMemberQuery<Cup[]>('/v1/me/cups');
@@ -39,55 +41,57 @@ export default function CardScreen() {
         contentContainerStyle={{ padding: space(5) }}
         refreshControl={<RefreshControl refreshing={summary.loading} onRefresh={() => (summary.reload(), card.reload(), cups.reload())} />}
       >
-        <Text style={type.title}>Hi{s?.member.displayName ? `, ${s.member.displayName}` : ''}</Text>
+        <Text style={type.title}>{s?.member.displayName ? t('card.greetingNamed', { name: s.member.displayName }) : t('card.greeting')}</Text>
         <ErrorText error={summary.error ?? card.error} />
 
         <Card style={{ alignItems: 'center', backgroundColor: colors.green, borderColor: colors.green }}>
-          <Text style={styles.cardLabel}>CUPPEE MEMBER</Text>
+          <Text style={styles.cardLabel}>{t('card.memberLabel')}</Text>
           <View style={styles.qrWrap}>{code ? <QRCode value={code} size={190} color={colors.green} backgroundColor={colors.cream} /> : <View style={{ width: 190, height: 190 }} />}</View>
-          <Text style={styles.cardHint}>No cup with you? Show this to the barista · refreshes in {secs}s</Text>
+          <Text style={styles.cardHint}>{t('card.qrHint', { secs })}</Text>
         </Card>
 
         <View style={styles.row}>
           <Card style={{ flex: 1, marginRight: space(2) }}>
-            <Text style={type.small}>Beans</Text>
+            <Text style={type.small}>{t('card.beans')}</Text>
             <Text style={styles.big}>{s?.beans ?? '–'}</Text>
-            <Text style={type.small}>Spend at any partner café</Text>
+            <Text style={type.small}>{t('card.beansHint')}</Text>
           </Card>
           <Card style={{ flex: 1, marginLeft: space(2) }}>
-            <Text style={type.small}>Cups linked</Text>
+            <Text style={type.small}>{t('card.cupsLinked')}</Text>
             <Text style={styles.big}>{cups.data?.length ?? '–'}</Text>
             <Text style={type.small} onPress={() => router.push('/link-cup')}>
-              + Link a cup
+              {t('card.linkCupShort')}
             </Text>
           </Card>
         </View>
 
         {cups.data && cups.data.length === 0 ? (
           <Card>
-            <Text style={type.h2}>Link your CUPPEE cup</Text>
-            <Text style={[type.body, { marginVertical: space(2) }]}>Then just put your cup on the stand at the counter. The barista sees your name and your usual, and your stamp is added.</Text>
-            <Button title="Link my cup" kind="accent" onPress={() => router.push('/link-cup')} />
+            <Text style={type.h2}>{t('card.linkTitle')}</Text>
+            <Text style={[type.body, { marginVertical: space(2) }]}>{t('card.linkBody')}</Text>
+            <Button title={t('card.linkButton')} kind="accent" onPress={() => router.push('/link-cup')} />
           </Card>
         ) : null}
 
         {top ? (
           <Card>
-            <Text style={type.small}>{top.lastVisit ? 'Your café' : 'Stamp card'}</Text>
+            <Text style={type.small}>{top.lastVisit ? t('card.yourCafe') : t('card.stampCard')}</Text>
             <Text style={type.h2}>{top.name}</Text>
             <StampRow stamps={top.stamps} goal={top.goal} />
             <Text style={type.small}>
-              {top.stamps >= top.goal ? `Ready: ${top.reward}. Ask at the counter.` : `${top.goal - top.stamps} more for ${top.reward.toLowerCase()}`}
+              {top.stamps >= top.goal
+                ? t('card.ready', { reward: top.reward })
+                : t('card.moreFor', { count: top.goal - top.stamps, reward: lang === 'en' ? top.reward.toLowerCase() : top.reward })}
             </Text>
           </Card>
         ) : null}
 
         {s?.recentVisits.length ? (
           <Card>
-            <Text style={[type.h2, { marginBottom: space(2) }]}>Recent visits</Text>
+            <Text style={[type.h2, { marginBottom: space(2) }]}>{t('card.recentVisits')}</Text>
             {s.recentVisits.slice(0, 5).map((v) => (
               <Text key={v.id} style={[type.body, { paddingVertical: space(1) }]}>
-                {v.cafeName} · {new Date(v.at).toLocaleDateString()} {v.source === 'stand' ? '· cup' : ''}
+                {v.cafeName} · {date(v.at)} {v.source === 'stand' ? t('card.viaCup') : ''}
               </Text>
             ))}
           </Card>

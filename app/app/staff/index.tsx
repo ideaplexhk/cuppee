@@ -10,6 +10,10 @@ import { useSession } from '../../src/session';
 import { QrScanner } from '../../src/components/QrScanner';
 import { Button, Card, ErrorText, StampRow } from '../../src/components/ui';
 import { colors, space, type } from '../../src/theme';
+import { LanguageSwitch, useT } from '../../src/i18n';
+import type { MessageKey, Vars } from '../../src/lib/i18n/core';
+
+type T = (key: MessageKey, vars?: Vars) => string;
 
 type Feed = { cafe: { id: string; name: string }; events: FeedEvent[]; serverTime: number };
 type Balances = { stamps: number; stampGoal: number; stampCardReady: boolean; stampReward: string; beans: number; rewards: Reward[] };
@@ -17,20 +21,21 @@ type Lookup = { member: { id: string; name: string | null; preferences: Record<s
 
 const POLL_MS = 1000;
 
-function prefLine(p: Record<string, any>): string {
+function prefLine(t: T, p: Record<string, any>): string {
   const parts = [p.drink, p.milk, p.sweetness, p.temperature].filter(Boolean);
   if (parts.length) return parts.join(' · ');
-  if (p.lastOrder?.name) return `Last time: ${[p.lastOrder.name, ...(p.lastOrder.modifiers ?? [])].join(', ')}`;
-  return 'No usual set yet';
+  if (p.lastOrder?.name) return t('staff.usualLast', { order: [p.lastOrder.name, ...(p.lastOrder.modifiers ?? [])].join(', ') });
+  return t('staff.usualNone');
 }
 
-function ago(t: number, now: number) {
-  const s = Math.max(0, Math.round((now - t) / 1000));
-  return s < 60 ? `${s}s ago` : `${Math.round(s / 60)} min ago`;
+function ago(t: T, at: number, now: number) {
+  const s = Math.max(0, Math.round((now - at) / 1000));
+  return s < 60 ? t('staff.secondsAgo', { n: s }) : t('staff.minutesAgo', { n: Math.round(s / 60) });
 }
 
 export default function StaffHome() {
   const { staffToken, staff, setStaff } = useSession();
+  const { t } = useT();
   const [feed, setFeed] = useState<Feed | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -77,10 +82,10 @@ export default function StaffHome() {
   if (!staffToken) return <Redirect href="/staff/login" />;
 
   function visitToast(name: string | null, v: VisitResult) {
-    const who = name ?? 'Member';
-    if (v.cooldown) return setToast(`${who}: visit noted (already stamped in the last few minutes)`);
-    const ready = v.balances.stampCardReady ? ' · stamp card complete!' : '';
-    setToast(`${who}: +1 stamp (${v.balances.stamps}/${v.balances.stampGoal}), +${v.awarded.beans} beans${ready}`);
+    const who = name ?? t('common.member');
+    if (v.cooldown) return setToast(t('staff.toastCooldown', { name: who }));
+    const ready = v.balances.stampCardReady ? t('staff.toastReady') : '';
+    setToast(t('staff.toastVisit', { name: who, stamps: v.balances.stamps, goal: v.balances.stampGoal, beans: v.awarded.beans, ready }));
   }
 
   async function confirm(e: FeedEvent) {
@@ -144,14 +149,14 @@ export default function StaffHome() {
 
   function redeem(kind: 'stamp-card' | 'reward', label: string, rewardId?: string) {
     if (!redeemFor) return;
-    Alert.alert(`Redeem ${label}?`, `For ${redeemFor.name ?? 'this member'}. This can’t be undone from the tablet.`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('staff.redeemConfirmTitle', { label }), t('staff.redeemConfirmBody', { name: redeemFor.name ?? t('staff.thisMember') }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Redeem',
+        text: t('staff.redeemAction'),
         onPress: async () => {
           try {
             await api(`/v1/staff/redeem/${kind}`, { token: staffToken, body: { memberId: redeemFor.id, rewardId } });
-            setToast(`Redeemed: ${label}`);
+            setToast(t('staff.redeemed', { label }));
             setRedeemFor(null);
             load();
           } catch (e) {
@@ -175,12 +180,13 @@ export default function StaffHome() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.cream }}>
       <View style={styles.header}>
         <View>
-          <Text style={type.title}>{feed?.cafe.name ?? 'Counter'}</Text>
-          <Text style={type.small}>{staff?.name} · cups on the stand appear here</Text>
+          <Text style={type.title}>{feed?.cafe.name ?? t('staff.counter')}</Text>
+          <Text style={type.small}>{t('staff.subtitle', { name: staff?.name ?? '' })}</Text>
         </View>
         <View style={{ flexDirection: 'row' }}>
-          <Button title="Scan member card" kind="accent" onPress={() => setScan(true)} style={{ marginRight: space(2) }} />
-          <Button title="Sign out" kind="secondary" onPress={signOut} />
+          <LanguageSwitch style={{ marginRight: space(2) }} />
+          <Button title={t('staff.scanCard')} kind="accent" onPress={() => setScan(true)} style={{ marginRight: space(2) }} />
+          <Button title={t('common.signOut')} kind="secondary" onPress={signOut} />
         </View>
       </View>
       {toast ? <Text style={styles.toast}>{toast}</Text> : null}
@@ -189,29 +195,29 @@ export default function StaffHome() {
       <ScrollView contentContainerStyle={{ padding: space(5) }}>
         {pending.length === 0 ? (
           <Card style={{ alignItems: 'center', paddingVertical: space(12) }}>
-            <Text style={type.h2}>Waiting for a cup…</Text>
-            <Text style={type.small}>Members put their CUPPEE cup on the stand.</Text>
+            <Text style={type.h2}>{t('staff.waiting')}</Text>
+            <Text style={type.small}>{t('staff.waitingHint')}</Text>
           </Card>
         ) : null}
 
         {pending.map((e) => (
           <Card key={e.id} style={styles.eventCard}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{e.member?.name ?? 'Member'}</Text>
-              <Text style={[type.body, { marginVertical: space(1) }]}>{prefLine(e.member?.preferences ?? {})}</Text>
-              {e.member?.preferences?.notes ? <Text style={type.small}>Note: {e.member.preferences.notes}</Text> : null}
+              <Text style={styles.name}>{e.member?.name ?? t('common.member')}</Text>
+              <Text style={[type.body, { marginVertical: space(1) }]}>{prefLine(t, e.member?.preferences ?? {})}</Text>
+              {e.member?.preferences?.notes ? <Text style={type.small}>{t('staff.note', { note: e.member.preferences.notes })}</Text> : null}
               <StampRow stamps={e.member?.stamps ?? 0} goal={e.member?.stampGoal ?? 9} size={18} />
               <Text style={type.small}>
-                {ago(e.readAt, now)}
+                {ago(t, e.readAt, now)}
                 {e.cup?.nickname ? ` · ${e.cup.nickname}` : ''}
-                {e.member?.recentVisit ? ' · already visited in the last few minutes' : ''}
+                {e.member?.recentVisit ? t('staff.recentVisit') : ''}
               </Text>
-              {e.member?.stampCardReady ? <Text style={styles.ready}>Stamp card complete: offer the free drink</Text> : null}
+              {e.member?.stampCardReady ? <Text style={styles.ready}>{t('staff.cardComplete')}</Text> : null}
             </View>
             <View style={{ width: 200 }}>
-              <Button title="Confirm visit" onPress={() => confirm(e)} busy={busyId === e.id} />
-              {e.member ? <Button title="Redeem…" kind="secondary" onPress={() => openRedeem({ id: e.member!.id, name: e.member!.name })} /> : null}
-              <Button title="Not this order" kind="ghost" onPress={() => dismiss(e)} />
+              <Button title={t('staff.confirmVisit')} onPress={() => confirm(e)} busy={busyId === e.id} />
+              {e.member ? <Button title={t('staff.redeem')} kind="secondary" onPress={() => openRedeem({ id: e.member!.id, name: e.member!.name })} /> : null}
+              <Button title={t('staff.notThisOrder')} kind="ghost" onPress={() => dismiss(e)} />
             </View>
           </Card>
         ))}
@@ -220,34 +226,34 @@ export default function StaffHome() {
           <Card key={e.id} style={[styles.eventCard, { opacity: 0.8 }]}>
             <View style={{ flex: 1 }}>
               <Text style={type.h2}>
-                {e.status === 'unlinked_cup' ? 'Cup not linked yet' : e.status === 'unknown_cup' ? 'Unknown cup' : 'Read failed'}
+                {e.status === 'unlinked_cup' ? t('staff.unlinkedCup') : e.status === 'unknown_cup' ? t('staff.unknownCup') : t('staff.readFailed')}
               </Text>
               <Text style={type.small}>
                 {e.status === 'unlinked_cup'
-                  ? 'Ask the customer to open the CUPPEE app and link this cup.'
+                  ? t('staff.unlinkedHint')
                   : e.status === 'unknown_cup'
-                    ? `This chip isn’t a registered CUPPEE cup (UID ${e.uid ?? '?'}).`
-                    : `Reason: ${e.rejectReason}. Ask them to lift the cup and place it again.`}{' '}
-                · {ago(e.readAt, now)}
+                    ? t('staff.unknownHint', { uid: e.uid ?? '?' })
+                    : t('staff.failedHint', { reason: e.rejectReason ?? '?' })}{' '}
+                · {ago(t, e.readAt, now)}
               </Text>
             </View>
-            <Button title="Clear" kind="ghost" onPress={() => dismiss(e)} />
+            <Button title={t('staff.clear')} kind="ghost" onPress={() => dismiss(e)} />
           </Card>
         ))}
       </ScrollView>
 
-      <QrScanner visible={scan} title="Scan the member’s card" onClose={() => setScan(false)} onScan={onCardScanned} />
+      <QrScanner visible={scan} title={t('staff.scanTitle')} onClose={() => setScan(false)} onScan={onCardScanned} />
 
       <Modal visible={!!cardMember} transparent animationType="fade" onRequestClose={() => setCardMember(null)}>
         <View style={styles.backdrop}>
           <Card style={styles.sheet}>
-            <Text style={styles.name}>{cardMember?.data.member.name ?? 'Member'}</Text>
-            <Text style={type.body}>{prefLine(cardMember?.data.member.preferences ?? {})}</Text>
+            <Text style={styles.name}>{cardMember?.data.member.name ?? t('common.member')}</Text>
+            <Text style={type.body}>{prefLine(t, cardMember?.data.member.preferences ?? {})}</Text>
             <StampRow stamps={cardMember?.data.stamps ?? 0} goal={cardMember?.data.stampGoal ?? 9} size={18} />
-            <Text style={type.small}>{cardMember?.data.beans} beans</Text>
-            <Button title="Record visit" onPress={recordCardVisit} />
-            <Button title="Redeem…" kind="secondary" onPress={() => cardMember && openRedeem({ id: cardMember.data.member.id, name: cardMember.data.member.name })} />
-            <Button title="Close" kind="ghost" onPress={() => setCardMember(null)} />
+            <Text style={type.small}>{t('staff.beansCount', { beans: cardMember?.data.beans ?? 0 })}</Text>
+            <Button title={t('staff.recordVisit')} onPress={recordCardVisit} />
+            <Button title={t('staff.redeem')} kind="secondary" onPress={() => cardMember && openRedeem({ id: cardMember.data.member.id, name: cardMember.data.member.name })} />
+            <Button title={t('common.close')} kind="ghost" onPress={() => setCardMember(null)} />
           </Card>
         </View>
       </Modal>
@@ -255,26 +261,26 @@ export default function StaffHome() {
       <Modal visible={!!redeemFor} transparent animationType="fade" onRequestClose={() => setRedeemFor(null)}>
         <View style={styles.backdrop}>
           <Card style={styles.sheet}>
-            <Text style={styles.name}>Redeem for {redeemFor?.name ?? 'member'}</Text>
+            <Text style={styles.name}>{t('staff.redeemFor', { name: redeemFor?.name ?? t('staff.member') })}</Text>
             {!balances ? (
-              <Text style={type.small}>Loading…</Text>
+              <Text style={type.small}>{t('common.loading')}</Text>
             ) : (
               <>
-                <Text style={[type.h2, { marginTop: space(3) }]}>Stamp card</Text>
+                <Text style={[type.h2, { marginTop: space(3) }]}>{t('staff.stampCard')}</Text>
                 <StampRow stamps={balances.stamps} goal={balances.stampGoal} size={18} />
                 <Button
-                  title={balances.stampCardReady ? `Redeem: ${balances.stampReward}` : `${balances.stampGoal - balances.stamps} stamps to go`}
+                  title={balances.stampCardReady ? t('staff.redeemItem', { reward: balances.stampReward }) : t('staff.stampsToGo', { count: balances.stampGoal - balances.stamps })}
                   disabled={!balances.stampCardReady}
                   kind="accent"
                   onPress={() => redeem('stamp-card', balances.stampReward)}
                 />
-                <Text style={[type.h2, { marginTop: space(3) }]}>Beans · {balances.beans}</Text>
+                <Text style={[type.h2, { marginTop: space(3) }]}>{t('staff.beansTitle', { beans: balances.beans })}</Text>
                 {balances.rewards
                   .filter((r) => !r.cafeId || r.cafeId === feed?.cafe.id)
                   .map((r) => (
                     <Button
                       key={r.id}
-                      title={`${r.title} · ${r.costBeans}`}
+                      title={t('staff.rewardOption', { title: r.title, cost: r.costBeans })}
                       kind="secondary"
                       disabled={balances.beans < r.costBeans}
                       onPress={() => redeem('reward', r.title, r.id)}
@@ -282,7 +288,7 @@ export default function StaffHome() {
                   ))}
               </>
             )}
-            <Button title="Close" kind="ghost" onPress={() => setRedeemFor(null)} />
+            <Button title={t('common.close')} kind="ghost" onPress={() => setRedeemFor(null)} />
           </Card>
         </View>
       </Modal>

@@ -5,6 +5,7 @@
 // Needs a development build (npx expo run:android / run:ios); Expo Go has no NFC module.
 
 import { Platform } from 'react-native';
+import { tNow } from './i18n/core';
 
 export type CupTap = { url: string } | { uid: string };
 
@@ -36,12 +37,12 @@ export async function nfcAvailable(): Promise<boolean> {
 
 export async function readCup(): Promise<CupTap> {
   const m = nfcModule();
-  if (!m) throw new Error('NFC is not available on this device.');
+  if (!m) throw new Error(tNow('nfc.unavailable'));
   const { default: Nfc, NfcTech, Ndef } = m;
   try {
-    await Nfc.requestTechnology(NfcTech.Ndef, { alertMessage: 'Hold the base of your cup to the top of your phone.' });
+    await Nfc.requestTechnology(NfcTech.Ndef, { alertMessage: tNow('nfc.holdCup') });
     const tag = await Nfc.getTag();
-    if (!tag) throw new Error('No cup found. Try again.');
+    if (!tag) throw new Error(tNow('nfc.noCup'));
     for (const rec of tag.ndefMessage ?? []) {
       try {
         const uri = Ndef.uri.decodePayload(new Uint8Array(rec.payload as number[]));
@@ -51,7 +52,7 @@ export async function readCup(): Promise<CupTap> {
       }
     }
     if (tag.id) return { uid: String(tag.id) };
-    throw new Error('This tag isn’t a CUPPEE cup.');
+    throw new Error(tNow('nfc.notCuppee'));
   } finally {
     Nfc.cancelTechnologyRequest().catch(() => {});
   }
