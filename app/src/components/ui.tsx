@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radius, space, type } from '../theme';
+import { useT } from '../i18n';
 
 export function Screen({ children, scroll = true, style }: { children: React.ReactNode; scroll?: boolean; style?: StyleProp<ViewStyle> }) {
   const inner = <View style={[styles.inner, style]}>{children}</View>;
@@ -51,9 +52,10 @@ export function Button({
 
 /** Stamp card: filled cups for stamps earned, outlined for the rest. */
 export function StampRow({ stamps, goal, size = 26 }: { stamps: number; goal: number; size?: number }) {
+  const { t } = useT();
   const shown = Math.min(stamps, goal);
   return (
-    <View style={styles.stamps} accessibilityLabel={`${shown} of ${goal} stamps`}>
+    <View style={styles.stamps} accessibilityLabel={t('common.stampsAria', { shown, goal })}>
       {Array.from({ length: goal }).map((_, i) => (
         <View
           key={i}

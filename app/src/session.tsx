@@ -1,6 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import { store } from './storage';
 
 type Staff = { id: string; name: string; role: string; cafeId: string };
 type State = {
@@ -15,18 +14,6 @@ type Ctx = State & {
 };
 
 const SessionContext = createContext<Ctx | null>(null);
-
-// SecureStore is native-only; web (for quick demos) falls back to localStorage.
-const store = {
-  get: (k: string) => (Platform.OS === 'web' ? Promise.resolve(globalThis.localStorage?.getItem(k) ?? null) : SecureStore.getItemAsync(k)),
-  set: (k: string, v: string | null) => {
-    if (Platform.OS === 'web') {
-      v === null ? globalThis.localStorage?.removeItem(k) : globalThis.localStorage?.setItem(k, v);
-      return Promise.resolve();
-    }
-    return v === null ? SecureStore.deleteItemAsync(k) : SecureStore.setItemAsync(k, v);
-  },
-};
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [s, setS] = useState<State>({ ready: false, memberToken: null, staffToken: null, staff: null });
@@ -55,6 +42,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
 export function useSession() {
   const c = useContext(SessionContext);
-  if (!c) throw new Error('useSession outside SessionProvider');
+  if (!c) throw new Error('useSession outside SessionProvider'); // i18n-ignore: developer error
   return c;
 }

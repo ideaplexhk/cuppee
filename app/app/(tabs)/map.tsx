@@ -5,8 +5,10 @@ import { useMemberQuery } from '../../src/lib/useApi';
 import { CafeMap } from '../../src/components/CafeMap';
 import { Button, Card, ErrorText, Screen, StampRow, Title } from '../../src/components/ui';
 import { colors, space, type } from '../../src/theme';
+import { useT } from '../../src/i18n';
 
 export default function MapScreen() {
+  const { t } = useT();
   const cafes = useMemberQuery<Cafe[]>('/v1/cafes');
   const summary = useMemberQuery<Summary>('/v1/me');
   const [open, setOpen] = useState<string | null>(null);
@@ -14,7 +16,7 @@ export default function MapScreen() {
 
   return (
     <Screen>
-      <Title>Partner cafés</Title>
+      <Title>{t('map.title')}</Title>
       <ErrorText error={cafes.error} />
       {cafes.data ? <CafeMap cafes={cafes.data} onSelect={(c) => setOpen(c.id)} /> : null}
       <View style={{ height: space(4) }} />
@@ -28,13 +30,13 @@ export default function MapScreen() {
                 {c.name}
                 {c.nameZh ? `  ${c.nameZh}` : ''}
               </Text>
-              <Text style={type.small}>{c.locationConfirmed ? [c.district, c.address].filter(Boolean).join(' · ') : 'Location to be added'}</Text>
+              <Text style={type.small}>{c.locationConfirmed ? [c.district, c.address].filter(Boolean).join(' · ') : t('map.locationTbc')}</Text>
               {expanded ? (
                 <View style={{ marginTop: space(3) }}>
                   {c.description ? <Text style={[type.body, { marginBottom: space(2) }]}>{c.description}</Text> : null}
-                  {c.hours ? <Text style={type.small}>Hours: {c.hours}</Text> : null}
+                  {c.hours ? <Text style={type.small}>{t('map.hours', { hours: c.hours })}</Text> : null}
                   <Text style={[type.small, { marginTop: space(2) }]}>
-                    {c.stampGoal} stamps → {c.stampReward} · {c.beansPerVisit} beans per visit
+                    {t('map.terms', { goal: c.stampGoal, reward: c.stampReward, beans: c.beansPerVisit })}
                   </Text>
                   {card ? <StampRow stamps={card.stamps} goal={card.goal} size={18} /> : null}
                   {c.menu.length ? (
@@ -49,7 +51,7 @@ export default function MapScreen() {
                   ) : null}
                   {c.lat != null && c.lng != null ? (
                     <Button
-                      title="Directions"
+                      title={t('map.directions')}
                       kind="secondary"
                       onPress={() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`)}
                     />

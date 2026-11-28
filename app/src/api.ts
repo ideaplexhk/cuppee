@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { errorText, tNow } from './lib/i18n/core';
 
 // Set EXPO_PUBLIC_API_URL (e.g. http://192.168.1.20:8787 — your computer's LAN IP, so a phone can reach it),
 // or change extra.apiUrl in app.json.
@@ -27,11 +28,11 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
       body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
     });
   } catch {
-    throw new ApiError(0, 'offline', 'Can’t reach CUPPEE. Check your connection.');
+    throw new ApiError(0, 'offline', tNow('error.offline'));
   }
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
-  if (!res.ok) throw new ApiError(res.status, data?.error ?? 'error', data?.message ?? data?.error ?? 'Something went wrong');
+  if (!res.ok) throw new ApiError(res.status, data?.error ?? 'error', errorText(data?.error, data?.message));
   return data as T;
 }
 

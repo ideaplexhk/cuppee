@@ -3,9 +3,11 @@ import { Modal, StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Button } from './ui';
 import { colors, space } from '../theme';
+import { useT } from '../i18n';
 
 /** Full-screen QR scanner. Calls onScan once per opening. */
 export function QrScanner({ visible, title, onScan, onClose }: { visible: boolean; title: string; onScan: (data: string) => void; onClose: () => void }) {
+  const { t } = useT();
   const [perm, requestPerm] = useCameraPermissions();
   const done = useRef(false);
   if (!visible) done.current = false;
@@ -16,8 +18,8 @@ export function QrScanner({ visible, title, onScan, onClose }: { visible: boolea
         <Text style={styles.title}>{title}</Text>
         {!perm?.granted ? (
           <View style={{ padding: space(6) }}>
-            <Text style={{ color: colors.cream, marginBottom: space(3) }}>CUPPEE needs the camera to scan the code.</Text>
-            <Button title="Allow camera" kind="accent" onPress={requestPerm} />
+            <Text style={{ color: colors.cream, marginBottom: space(3) }}>{t('scanner.needCamera')}</Text>
+            <Button title={t('scanner.allowCamera')} kind="accent" onPress={requestPerm} />
           </View>
         ) : (
           <CameraView
@@ -31,7 +33,7 @@ export function QrScanner({ visible, title, onScan, onClose }: { visible: boolea
             }}
           />
         )}
-        <Button title="Cancel" kind="secondary" onPress={onClose} style={{ margin: space(5) }} />
+        <Button title={t('common.cancel')} kind="secondary" onPress={onClose} style={{ margin: space(5) }} />
       </View>
     </Modal>
   );

@@ -24,7 +24,7 @@ Status: `todo` · `doing` · `blocked` · `review` (PR open) · `done`. The owne
 
 | ID | Task | Acceptance criteria | Blocked by | Status |
 | --- | --- | --- | --- | --- |
-| M2.1 | i18n framework | All existing app strings moved to `en` and `zh-HK` files; language switch in member profile and staff mode; a test fails if a key is missing in either language | | todo |
+| M2.1 | i18n framework | All existing app strings moved to `en` and `zh-HK` files; language switch in member profile and staff mode; a test fails if a key is missing in either language | | review |
 
 ## M3. POS core (counter service)
 
