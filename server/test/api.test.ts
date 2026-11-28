@@ -80,7 +80,7 @@ describe('API', () => {
   test('stand flow: debounce, idempotent replay, confirm, cooldown, stamp card', async () => {
     const { token, memberId } = await s.signUp('94444444', 'Di');
     // Free the NTAG 213 cup from the previous test and give it to Di.
-    s.db.prepare("UPDATE cups SET member_id = NULL WHERE id = 'cup_213'").run();
+    await s.db.run("UPDATE cups SET member_id = NULL WHERE id = 'cup_213'");
     assert.equal((await s.call('POST', '/v1/me/cups', { token, body: { qr: 'CUP-0001' } })).status, 200);
     const st = await s.staffToken();
 
@@ -123,12 +123,12 @@ describe('API', () => {
     assert.deepEqual(c2.data.awarded, { stamps: 0, beans: 0 });
 
     // Fill the stamp card (goal 3 at Café A) by backdating visits past the cooldown.
-    s.db.prepare('UPDATE visits SET created_at = created_at - 3600000 WHERE member_id = ?').run(memberId);
+    await s.db.run('UPDATE visits SET created_at = created_at - 3600000 WHERE member_id = $1', [memberId]);
     const key = (await s.call('GET', '/v1/me/card', { token })).data.cardKey;
     const { cardCode } = await import('../src/services/card.ts');
     const v3 = await s.call('POST', '/v1/staff/visits', { token: st, body: { code: cardCode(key, memberId) } });
     assert.equal(v3.data.balances.stamps, 2);
-    s.db.prepare('UPDATE visits SET created_at = created_at - 3600000 WHERE member_id = ?').run(memberId);
+    await s.db.run('UPDATE visits SET created_at = created_at - 3600000 WHERE member_id = $1', [memberId]);
     const v4 = await s.call('POST', '/v1/staff/visits', { token: st, body: { code: cardCode(key, memberId) } });
     assert.equal(v4.data.balances.stampCardReady, true);
 
@@ -153,7 +153,7 @@ describe('API', () => {
     const key = (await s.call('GET', '/v1/me/card', { token })).data.cardKey;
     const { cardCode } = await import('../src/services/card.ts');
     // Clear other members' recent visits so Ed's is the only candidate in the window.
-    s.db.prepare('UPDATE visits SET created_at = created_at - 86400000 WHERE member_id != ?').run(memberId);
+    await s.db.run('UPDATE visits SET created_at = created_at - 86400000 WHERE member_id != $1', [memberId]);
     await s.call('POST', '/v1/staff/visits', { token: st, body: { code: cardCode(key, memberId) } });
 
     const sign = (raw: string) => ({ 'x-cuppee-signature': 'sha256=' + createHmac('sha256', s.cfg.posSecrets.generic).update(raw).digest('hex') });
@@ -196,7 +196,7 @@ describe('API', () => {
   test('ambiguous POS order is left unmatched', async () => {
     const st = await s.staffToken();
     const { cardCode } = await import('../src/services/card.ts');
-    s.db.prepare('UPDATE visits SET created_at = created_at - 86400000').run();
+    await s.db.run('UPDATE visits SET created_at = created_at - 86400000');
     for (const [phone, name] of [['96666666', 'Fi'], ['97777777', 'Gu']]) {
       const m = await s.signUp(phone, name);
       const key = (await s.call('GET', '/v1/me/card', { token: m.token })).data.cardKey;

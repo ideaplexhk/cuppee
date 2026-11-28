@@ -8,7 +8,8 @@ function hexKey(name: string, fallback: string): Buffer {
 
 export type Config = {
   port: number;
-  dbPath: string;
+  /** PostgreSQL connection string, e.g. postgres://cuppee:cuppee@localhost:5432/cuppee */
+  databaseUrl: string;
   devMode: boolean;
   /** Secret used to sign rotating member-card QR codes. */
   cardSecret: string;
@@ -28,7 +29,7 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
   const devMode = (process.env.NODE_ENV ?? 'development') !== 'production';
   const cfg: Config = {
     port: Number(process.env.PORT ?? 8787),
-    dbPath: process.env.DB_PATH ?? './cuppee.db',
+    databaseUrl: process.env.DATABASE_URL ?? '',
     devMode,
     cardSecret: process.env.CARD_SECRET ?? (devMode ? 'dev-card-secret' : ''),
     sdmMetaReadKey: hexKey('SDM_META_READ_KEY', '00000000000000000000000000000000'),
@@ -43,6 +44,7 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     },
     ...overrides,
   };
+  if (!cfg.databaseUrl) throw new Error('DATABASE_URL is required, e.g. postgres://cuppee:cuppee@localhost:5432/cuppee');
   if (!cfg.devMode) {
     if (!cfg.cardSecret) throw new Error('CARD_SECRET is required in production');
     if (cfg.sdmMetaReadKey.equals(Buffer.alloc(16))) throw new Error('Set real SDM keys in production');

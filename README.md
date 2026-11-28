@@ -3,7 +3,7 @@
 Membership app for the CUPPEE cup: sign up with a phone number, link your NFC cup, put it on the counter stand at
 any partner café, get stamps and beans. The café tablet shows who you are and your usual order.
 
-- `server/`: API (zero dependencies, Node 22.18+)
+- `server/`: API (Node 22.18+, PostgreSQL; one runtime dependency, the `pg` driver)
 - `app/`: Expo SDK 58 app (member + café staff mode)
 - `stand-bridge/`: ACR122U counter stand → API
 - `docs/ARCHITECTURE.md`: how it fits together
@@ -14,10 +14,15 @@ any partner café, get stamps and beans. The café tablet shows who you are and 
 ### 1. API
 
 ```bash
+# PostgreSQL, e.g. with Docker:
+docker run -d --name cuppee-pg -p 5432:5432 -e POSTGRES_USER=cuppee -e POSTGRES_PASSWORD=cuppee -e POSTGRES_DB=cuppee postgres:16
+docker exec cuppee-pg createdb -U cuppee cuppee_test
+
 cd server
-npm run seed      # creates cuppee.db; prints a STAND_ID / STAND_KEY per café, keep them
-npm start         # http://localhost:8787
-npm test          # 10 tests, incl. NXP's NTAG 424 SUN example
+cp .env.example .env   # DATABASE_URL points at the database above
+npm run seed      # applies migrations; prints a STAND_ID / STAND_KEY per café, keep them
+npm start         # http://localhost:8787 (applies any new migrations first)
+DATABASE_URL=postgres://cuppee:cuppee@localhost:5432/cuppee_test npm test   # incl. NXP's NTAG 424 SUN example
 ```
 
 Dev mode prints login codes in the terminal (and the app shows them).

@@ -30,7 +30,8 @@ export const genericAdapter: PosAdapter = {
     const list: any[] = Array.isArray(body?.orders) ? body.orders : [];
     return list.map((o): NormalizedOrder => {
       if (!o?.id || !o?.location_id) throw new Error('order.id and order.location_id are required');
-      const at = typeof o.created_at === 'number' ? o.created_at : Date.parse(o.created_at);
+      // Whole milliseconds: ordered_at is BIGINT.
+      const at = Math.trunc(typeof o.created_at === 'number' ? o.created_at : Date.parse(o.created_at));
       if (!Number.isFinite(at)) throw new Error(`order ${o.id}: bad created_at`);
       return {
         externalId: String(o.id),
