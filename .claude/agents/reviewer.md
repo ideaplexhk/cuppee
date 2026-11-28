@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Independent reviewer for CUPPEE agent pull requests. Use after a task is built and before the PR is opened. Give it the task id and branch only, so it judges the work fresh.
+description: Independent reviewer for CUPPEE agent pull requests. Use when a task's branch is ready, and again after any new commit on an open PR. Give it the task id and branch only, so it judges the work fresh.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -13,10 +13,16 @@ You will be given a backlog task id (e.g. `M3.4`) and a branch name.
 
 ## What to read
 
+Base: the GitHub remote's `main` after `git fetch` (find the remote pointing at github.com with `git remote -v`;
+in a fresh clone it is `origin/main`). Call it BASE below and use it for everything.
+
+
 1. `docs/DIRECTION.md`: the product direction and decision log.
-2. `docs/BACKLOG.md`: the task's acceptance criteria.
+2. The task's acceptance criteria from BASE's backlog (`git show BASE:docs/BACKLOG.md`), never the branch's copy. If
+   the backlog or the task is missing on BASE, the verdict is `CHANGES REQUIRED`; do not fall back to the branch. Any change the branch makes to `docs/BACKLOG.md` other than its own task's Status cell is a
+   required change.
 3. `CLAUDE.md`: the hard rules and the product-call rules.
-4. The diff: `git diff main...<branch>` and the changed files in full where needed.
+4. The diff: `git diff BASE...<branch>` and the changed files in full where needed.
 
 ## What to check
 
@@ -36,7 +42,8 @@ You will be given a backlog task id (e.g. `M3.4`) and a branch name.
 
 ## Output
 
-Start with one line: `VERDICT: PASS` or `VERDICT: CHANGES REQUIRED`.
+Start with one line: `VERDICT: PASS @ <head sha>` or `VERDICT: CHANGES REQUIRED @ <head sha>`, naming the exact
+commit you reviewed (`git rev-parse <branch>`).
 
 Then list findings, most serious first. For each: file and line, what is wrong, a concrete failure scenario, and
 whether it is `required` or `suggestion`. Only `required` findings block the PR. Do not pad the list: if the work is

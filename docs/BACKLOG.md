@@ -1,14 +1,14 @@
 # CUPPEE backlog
 
-Ordered. The agent takes the first `todo` task whose `Blocked by` questions (see `QUESTIONS.md`) are answered.
+Ordered. Which task the agent takes next is defined in `CLAUDE.md` step 3.
 Status: `todo` · `doing` · `blocked` · `review` (PR open) · `done`. The owner may reorder or edit anything here.
 
 ## M0. Agent harness: make self-proof real
 
 | ID | Task | Acceptance criteria | Blocked by | Status |
 | --- | --- | --- | --- | --- |
-| M0.1 | Make `scripts/verify.sh` green | Installs deps, type-checks and tests `server/`, `stand-bridge/`, `app/`; exits non-zero on any failure; CI workflow runs it on every PR | | review |
-| M0.2 | Pin app dependencies | Replace `*` versions in `app/package.json` with the Expo SDK 58 versions from `expo install --fix`; commit the lockfile | | review |
+| M0.1 | Make `scripts/verify.sh` green | Installs deps, type-checks and tests `server/`, `stand-bridge/`, `app/`; exits non-zero on any failure; CI workflow runs it on every PR | | done |
+| M0.2 | Pin app dependencies | Replace `*` versions in `app/package.json` with the Expo SDK 58 versions from `expo install --fix`; commit the lockfile | | done |
 | M0.3 | Screenshot harness | `scripts/verify.sh --screens` serves the app on web, signs in with dev seed data, and saves PNGs of the screens in `scripts/screens.json` at 1280×800 and 1180×820, in `en` and `zh-HK` | M2.1 for the language part | todo |
 
 ## M1. PostgreSQL (decision 2026-11-28)
